@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="gelkube logo: a gelatinous cube with the homelab's tools floating inside">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a1748"/><stop offset="1" stop-color="#140b28"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b6ff5c"/><stop offset="1" stop-color="#22c55e"/>
+    </linearGradient>
+    <clipPath id="inside"><polygon points="256.0,50.0 434.4,153.0 434.4,359.0 256.0,462.0 77.6,359.0 77.6,153.0"/></clipPath>
+  </defs>
+  <polygon points="256.0,10.0 469.0,133.0 469.0,379.0 256.0,502.0 43.0,379.0 43.0,133.0" fill="#0f0820" stroke="#0f0820" stroke-width="16" stroke-linejoin="round"/>
+  <polygon points="256.0,34.0 448.3,145.0 448.3,367.0 256.0,478.0 63.7,367.0 63.7,145.0" fill="none" stroke="url(#rim)" stroke-width="14" stroke-linejoin="round"/>
+  <g clip-path="url(#inside)">
+    <rect width="512" height="512" fill="url(#bg)"/>
+    <path d="M0,372 L512,372 L512,512 L0,512 Z" fill="#1c1236"/>
+    <g stroke="#2e2152" stroke-width="4" fill="none">
+      <path d="M0,404 L512,404"/><path d="M0,440 L512,440"/>
+      <path d="M90,372 L70,404"/><path d="M200,372 L190,404"/><path d="M330,372 L340,404"/><path d="M440,372 L460,404"/>
+      <path d="M130,404 L110,440"/><path d="M270,404 L270,440"/><path d="M400,404 L420,440"/>
+    </g>
+  </g>
+
+  <!-- the homelab's tools, floating inside the cube -->
+  <g transform="translate(186 250) rotate(-8) scale(1.45)"><rect x="-16" y="-2" width="9" height="16" rx="2" fill="#ff9f43" stroke="#1b1030" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+   <rect x="-4.5" y="-14" width="9" height="28" rx="2" fill="#ffd23f" stroke="#1b1030" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+   <rect x="7" y="-7" width="9" height="21" rx="2" fill="#ff6b6b" stroke="#1b1030" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/></g>
+<g transform="translate(226 300) rotate(6) scale(1.45)"><rect x="-18" y="-14" width="36" height="28" rx="5" fill="#2b2140" stroke="#1b1030" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+   <path d="M-10,-4 l6,4 -6,4" fill="none" stroke="#9dff7a" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+   <path d="M1,5 h9" stroke="#9dff7a" stroke-width="3.5" stroke-linecap="round"/></g>
+<g transform="translate(188 322) rotate(-4) scale(1.45)"><path d="M0,-17 L15,-11 V1 C15,9 8,15 0,18 C-8,15 -15,9 -15,1 V-11 Z" fill="#4da3ff" stroke="#1b1030" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+   <circle cx="0" cy="-2" r="4.5" fill="#1b1030"/><path d="M-2,1 h4 l1.5,8 h-7 z" fill="#1b1030"/></g>
+<g transform="translate(320 250) rotate(8) scale(1.45)"><path d="M-8,-12 V12 M-8,4 C-8,-4 10,-2 10,-10" fill="none" stroke="#1b1030" stroke-width="8" stroke-linecap="round"/>
+   <path d="M-8,-12 V12 M-8,4 C-8,-4 10,-2 10,-10" fill="none" stroke="#ff8a3d" stroke-width="4" stroke-linecap="round"/>
+   <circle cx="-8" cy="-12" r="5" fill="#ff8a3d" stroke="#1b1030" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="-8" cy="13" r="5" fill="#ff8a3d" stroke="#1b1030" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="10" cy="-11" r="5" fill="#ff8a3d" stroke="#1b1030" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/></g>
+<g transform="translate(286 290) rotate(-6) scale(1.45)"><path d="M0,-12 V-18" stroke="#1b1030" stroke-width="3.5" stroke-linecap="round"/><circle cx="0" cy="-19" r="3.5" fill="#ffd23f" stroke="#1b1030" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+   <rect x="-15" y="-12" width="30" height="26" rx="7" fill="#b58cff" stroke="#1b1030" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+   <circle cx="-6" cy="0" r="4" fill="#1b1030"/><circle cx="6" cy="0" r="4" fill="#1b1030"/>
+   <path d="M-5,8 h10" stroke="#1b1030" stroke-width="3" stroke-linecap="round"/></g>
+<g transform="translate(330 310) rotate(5) scale(1.45)"><circle cx="0" cy="0" r="16" fill="#ffffff" stroke="#e5484d" stroke-width="5"/>
+   <text x="0" y="5" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-weight="700" font-size="13" fill="#1b1030">AD</text>
+   <path d="M-11,-11 L11,11" stroke="#e5484d" stroke-width="5" stroke-linecap="round"/></g>
+<g transform="translate(256 190) rotate(0) scale(1.45)"><path d="M-12,9 L0,-11 L12,9 Z" fill="none" stroke="#1b1030" stroke-width="7" stroke-linejoin="round"/>
+   <path d="M-12,9 L0,-11 L12,9 Z" fill="none" stroke="#e9e3ff" stroke-width="3" stroke-linejoin="round"/>
+   <circle cx="0" cy="-11" r="6" fill="#e9e3ff" stroke="#1b1030" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="-12" cy="9" r="6" fill="#e9e3ff" stroke="#1b1030" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="12" cy="9" r="6" fill="#e9e3ff" stroke="#1b1030" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/></g>
+
+  <!-- the gelatinous cube -->
+  <g stroke="#43e06e" stroke-width="10" stroke-linejoin="round">
+    <polygon points="146,192 256,256 256,382 146,318" fill="#2ee86a" fill-opacity="0.30"/>
+    <polygon points="366,192 256,256 256,382 366,318" fill="#18c454" fill-opacity="0.36"/>
+    <polygon points="256,128 366,192 256,256 146,192" fill="#8dff9e" fill-opacity="0.40"/>
+  </g>
+  <!-- shine + bubbles -->
+  <path d="M182,184 L214,166" stroke="#ffffff" stroke-width="8" stroke-linecap="round" opacity="0.8"/>
+  <path d="M164,210 L170,206" stroke="#ffffff" stroke-width="8" stroke-linecap="round" opacity="0.8"/>
+  <g fill="none" stroke="#e9ffe4" stroke-width="3" opacity="0.85">
+    <circle cx="160" cy="282" r="5"/><circle cx="352" cy="286" r="6"/><circle cx="300" cy="222" r="4"/>
+  </g>
+</svg>

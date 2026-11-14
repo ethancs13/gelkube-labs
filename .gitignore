@@ -1,0 +1,32 @@
+# Never commit secrets: this repo is public
+
+# Kubernetes credentials
+kubeconfig
+*.kubeconfig
+admin.kubeconfig
+.kube/
+
+# Keys and certificates (Kubernetes the Hard Way generates lots of these)
+*.key
+*.pem
+*.crt
+*.csr
+*.srl
+ca.conf.local
+
+# Environment and secret files
+.env
+.env.*
+*secret*.yaml
+!*sealed*secret*.yaml
+*.tfstate*
+
+# Tailscale auth keys
+tskey-*
+
+# OS and editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
