@@ -136,7 +136,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 
 ## How I document
 
-Every step gets its own numbered file in `docs/`, based on [`docs/_template.md`](docs/_template.md). Each entry has:
+Every step gets its own numbered file in `docs/`, based on [`docs/_template.md`](docs/_template.md). Inside each entry, every step follows the same pattern: **Why**, **Commands**, **What it does** and **What happened**. Each entry also has:
 
 1. **Goal:** what I'm trying to do and why
 2. **Steps:** a checklist with the exact commands I ran

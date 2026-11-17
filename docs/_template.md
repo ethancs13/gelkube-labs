@@ -1,32 +1,48 @@
-# NN: Title of this step
+# NN: Title of this entry
 
 **Date started:** YYYY-MM-DD
 **Status:** ⏳ Planned / 🚧 In progress / ✅ Done
 **Phase:** 0–6
 
+> **How to read this doc:** every step has the same four parts: **Why**, **Commands**, **What it does** and **What happened**.
+
 ## Goal
 
 What I'm trying to do, and why.
 
-## What I needed
+### Key ideas, explained like you're 5
 
-- Hardware, software, accounts or other prerequisites
+| Term | Simple picture | What it really is |
+|---|---|---|
+| | | |
 
-## Steps
+---
 
-### 1. First thing
-- [ ] What I did
+## Step 1: Name of the step
 
+### 1.1 Name of the sub-step
+
+**Why:** the reason for this step.
+
+**Commands:**
 ```bash
 # exact commands I ran
 ```
 
-### 2. Next thing
-- [ ] What I did
+**What it does:**
+- `part of the command`: what it does
 
-## What broke (and how I fixed it)
+**What happened:**
+```
+paste the important output here
+```
+What the output means.
 
-| Problem / error message | Cause | Fix |
+---
+
+## What broke (quick reference)
+
+| Problem | Cause | Fix |
 |---|---|---|
 | | | |
 
@@ -34,10 +50,6 @@ What I'm trying to do, and why.
 
 -
 
-## Screenshots
-
-<!-- ![description](../assets/screenshots/NN-name.png) -->
-
 ## Next up
 
-What comes next, and a link to the next entry once it exists.
+What comes next.
