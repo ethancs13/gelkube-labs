@@ -335,6 +335,233 @@ All four are Debian 12 with the right RAM and disk. RAM shows a little under 512
 
 ## Step 3: Set up the jumpbox
 
+> From here on, commands run **inside the jumpbox** (prompt `root@jumpbox`) unless the step says otherwise.
+
+### 3.1 Log in and get the guide
+
+**Why:** the jumpbox is the **workshop**, where I build every part (certificates, configs, programs) before delivering it to the other machines.
+
+**Commands** (from gelkube):
+```bash
+ssh root@192.168.122.10
+apt-get update && apt-get -y install wget curl vim openssl git
+git clone --depth 1 https://github.com/kelseyhightower/kubernetes-the-hard-way.git
+cd kubernetes-the-hard-way
+ls
+```
+
+**What it does:**
+- `ssh root@192.168.122.10`: logs in to the jumpbox as root, using gelkube's key
+- `apt-get install`: `wget`/`curl` download files, `openssl` makes certificates, `git` copies repos, `vim` edits files
+- `git clone --depth 1`: downloads the guide's files. `--depth 1` means only the latest version, not the whole history.
+
+**What happened:**
+```
+CONTRIBUTING.md  LICENSE    ca.conf  docs                 downloads-arm64.txt
+COPYRIGHT.md     README.md  configs  downloads-amd64.txt  units
+```
+
+| File/folder | Like you're 5 | What it really is |
+|---|---|---|
+| `docs/` | The instruction booklet | The guide's chapters |
+| `downloads-amd64.txt` | A shopping list | Links to every Kubernetes program, for Intel/AMD CPUs |
+| `ca.conf` | A recipe card for ID badges | Settings used to create all the TLS certificates |
+| `configs/` | Blank forms | Config file templates |
+| `units/` | Babysitter instructions | systemd service files that start each program and restart it if it crashes |
+
+### 3.2 Download the Kubernetes programs
+
+**Why:** Kubernetes isn't one program. It's about a dozen programs that work together, and the list pins the exact versions the guide was tested with.
+
+**Commands:**
+```bash
+cat downloads-$(dpkg --print-architecture).txt
+wget -q --show-progress --https-only --timestamping \
+  -P downloads -i downloads-$(dpkg --print-architecture).txt
+ls -oh downloads
+```
+
+**What it does:**
+- `dpkg --print-architecture`: prints the CPU type (`amd64`), so the right list is used
+- `wget -i <list> -P downloads`: downloads every link in the list into `downloads/`
+- `--https-only`: secure links only. `--timestamping`: skip files that are already downloaded.
+
+**What happened:**
+```
+51M  cni-plugins-linux-amd64-v1.6.2.tgz
+38M  containerd-2.1.0-beta.0-linux-amd64.tar.gz
+19M  crictl-v1.32.0-linux-amd64.tar.gz
+23M  etcd-v3.6.0-rc.3-linux-amd64.tar.gz
+89M  kube-apiserver
+83M  kube-controller-manager
+64M  kube-proxy
+63M  kube-scheduler
+55M  kubectl
+74M  kubelet
+12M  runc.amd64
+```
+
+**What each program is, and where it will live:**
+
+| Program | Goes to | Like you're 5 | What it really is |
+|---|---|---|---|
+| `kubectl` | jumpbox | The remote control | CLI for talking to the API server |
+| `etcdctl` | jumpbox | A notebook reader | CLI for etcd |
+| `etcd` | server | The notebook with the cluster's memory | Key-value database holding all cluster state |
+| `kube-apiserver` | server | The front desk. Everyone talks to it, and it needs certs. | The only door into the cluster, and the only thing that talks to etcd |
+| `kube-scheduler` | server | Decides which node each pod goes to | Assigns pods to nodes |
+| `kube-controller-manager` | server | Keeps asking "does reality match the plan?" and fixes it | Runs the control loops (Deployments, nodes, and so on) |
+| `kubelet` | nodes | Each node's foreman | Registers the node and makes sure its pods run |
+| `containerd` + `runc` | nodes | The machinery that runs containers | Container runtime. `runc` creates the actual Linux containers. |
+| `crictl` | nodes | Inspector for that machinery | CLI for container runtimes |
+| `kube-proxy` | nodes | Directs traffic for Services | Programs network rules that route Service IPs to pods |
+| `cni-plugins` | nodes | The contractor that wires up pod networking | Small programs (`bridge`, `host-local`, `loopback`...) that give each pod its network |
+
+### 3.3 Sort the programs into bins and install kubectl
+
+**Why:** later, each bin gets copied to the right machine. The `.tar.gz` files are compressed boxes that need unpacking first.
+
+**Commands:**
+```bash
+ARCH=$(dpkg --print-architecture)
+mkdir -p downloads/{client,cni-plugins,controller,worker}
+tar -xvf downloads/crictl-v1.32.0-linux-${ARCH}.tar.gz -C downloads/worker/
+tar -xvf downloads/containerd-2.1.0-beta.0-linux-${ARCH}.tar.gz --strip-components 1 -C downloads/worker/
+tar -xvf downloads/cni-plugins-linux-${ARCH}-v1.6.2.tgz -C downloads/cni-plugins/
+tar -xvf downloads/etcd-v3.6.0-rc.3-linux-${ARCH}.tar.gz -C downloads/ --strip-components 1 \
+  etcd-v3.6.0-rc.3-linux-${ARCH}/etcdctl etcd-v3.6.0-rc.3-linux-${ARCH}/etcd
+mv downloads/{etcdctl,kubectl} downloads/client/
+mv downloads/{etcd,kube-apiserver,kube-controller-manager,kube-scheduler} downloads/controller/
+mv downloads/{kubelet,kube-proxy} downloads/worker/
+mv downloads/runc.${ARCH} downloads/worker/runc
+rm -rf downloads/*gz
+chmod +x downloads/{client,cni-plugins,controller,worker}/*
+cp downloads/client/kubectl /usr/local/bin/
+kubectl version --client
+```
+
+**What it does:**
+- `mkdir -p downloads/{a,b,c}`: makes four folders at once
+- `tar -xvf <file> -C <folder>`: unpacks a box into a folder. `--strip-components 1` drops the box's outer folder.
+- `mv`: moves each program into its bin. `rm *gz` deletes the empty boxes.
+- `chmod +x`: marks the files as runnable programs
+- `cp kubectl /usr/local/bin/`: installs kubectl so it can be run from anywhere
+
+**What happened:**
+```
+Client Version: v1.32.3
+Kustomize Version: v5.5.0
+```
+
+---
+
+## Step 4: Address book, SSH access and hostnames
+
+### 4.1 Write the address book (`machines.txt`)
+
+**Why:** the guide's scripts loop over this file, so I don't have to type each machine by hand.
+
+**Commands:**
+```bash
+cat > machines.txt <<EOF
+192.168.122.11 server.kubernetes.local server
+192.168.122.20 node-0.kubernetes.local node-0 10.200.0.0/24
+192.168.122.21 node-1.kubernetes.local node-1 10.200.1.0/24
+EOF
+```
+
+**What it does:** the columns are IP · full name (FQDN) · short name · **pod subnet**. The pod subnet is like giving each node its own **block of house numbers**: node-0's pods get `10.200.0.x` and node-1's get `10.200.1.x`, so no two pods ever share an address.
+
+### 4.2 Give the jumpbox its own SSH key
+
+**Why:** the jumpbox has to SSH into the other machines to deliver parts. Only gelkube's key worked so far, and with no passwords the jumpbox can't hand out its key itself, so gelkube carries it over.
+
+**Commands:**
+```bash
+# on the jumpbox
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519
+exit
+
+# on gelkube
+JB_KEY=$(ssh root@192.168.122.10 cat .ssh/id_ed25519.pub)
+for ip in 11 20 21; do
+  ssh root@192.168.122.$ip "echo '$JB_KEY' >> ~/.ssh/authorized_keys"
+done
+ssh root@192.168.122.10
+
+# back on the jumpbox: test it
+cd ~/kubernetes-the-hard-way
+while read IP FQDN HOST SUBNET; do
+  ssh -n -o StrictHostKeyChecking=accept-new root@${IP} hostname
+done < machines.txt
+```
+
+**What it does:**
+- `JB_KEY=$(...)`: saves the jumpbox's public key in a variable
+- `>> ~/.ssh/authorized_keys`: **appends** it to each machine's list of allowed keys (`>` would replace the list)
+- `while read IP FQDN HOST SUBNET; do ... done < machines.txt`: runs the loop once per line, splitting each line into four variables
+- `ssh -n`: stops ssh from swallowing the rest of `machines.txt` as input. Without `-n`, the loop would stop after the first machine.
+
+**What happened:** `server`, `node-0` and `node-1` all answered. ✅
+
+> ⚠️ **Lesson:** I pasted extra lines after `exit`, and they ran on **gelkube** instead of the jumpbox. They failed harmlessly with "Permission denied". Always check the prompt (`root@jumpbox` vs `ethansroka@gelkube`) before pasting.
+
+### 4.3 Full hostnames, and stop cloud-init from undoing them
+
+**Why:** Kubernetes certificates use full names like `server.kubernetes.local`. On every boot, cloud-init normally rewrites the hostname and `/etc/hosts`, which would undo these changes.
+
+**Commands:**
+```bash
+cat > 99-kthw.cfg <<EOF
+manage_etc_hosts: false
+preserve_hostname: true
+EOF
+cp 99-kthw.cfg /etc/cloud/cloud.cfg.d/
+while read IP FQDN HOST SUBNET; do
+  scp 99-kthw.cfg root@${IP}:/etc/cloud/cloud.cfg.d/
+  ssh -n root@${IP} "sed -i '/^127.0.1.1/d' /etc/hosts; echo -e '127.0.1.1\t${FQDN} ${HOST}' >> /etc/hosts"
+  ssh -n root@${IP} hostname --fqdn
+done < machines.txt
+```
+
+**What it does:**
+- `manage_etc_hosts: false` / `preserve_hostname: true`: tells cloud-init to leave `/etc/hosts` and the hostname alone from now on
+- `scp`: copies a file to another machine over SSH
+- `sed -i '/^127.0.1.1/d'`: deletes the old "this is me" line. The `echo` adds a new one with the full name.
+- `hostname --fqdn`: prints the machine's full name
+
+**What happened:**
+```
+server.kubernetes.local
+node-0.kubernetes.local
+node-1.kubernetes.local
+```
+
+### 4.4 Share one address book with every machine
+
+**Why:** so every machine can find the others by name, not just by IP.
+
+**Commands:**
+```bash
+echo "# Kubernetes The Hard Way" > hosts
+while read IP FQDN HOST SUBNET; do echo "${IP} ${FQDN} ${HOST}" >> hosts; done < machines.txt
+cat hosts >> /etc/hosts
+while read IP FQDN HOST SUBNET; do
+  scp hosts root@${IP}:~/ && ssh -n root@${IP} "cat hosts >> /etc/hosts"
+done < machines.txt
+for host in server node-0 node-1; do ssh root@${host} hostname; done
+```
+
+**What it does:**
+- Builds a small `hosts` file with one line per machine, then appends it to `/etc/hosts` on the jumpbox and on every machine
+- The last loop connects **by name** to prove it works
+
+**What happened:** SSH asked `The authenticity of host 'server (192.168.122.11)' can't be established`. It already knew each machine by IP, just not by name yet ("known by the following other names"), so I typed `yes`. Then it printed `server`, `node-0`, `node-1`. ✅
+
+---
+
+## Step 5: Certificate authority and TLS certificates
+
 *Coming next.*
 
 ---
@@ -347,6 +574,7 @@ All four are Debian 12 with the right RAM and disk. RAM shows a little under 512
 | SSH `Permission denied (publickey)` on all VMs | cloud-init used the DMI seed (name only) and never read the user-data CD | `virt-customize --ssh-inject` with the VMs shut off |
 | `virt-cat -d jumpbox` error: `cloudinit.iso: No such file` | virt-install deletes the CD after first boot, but the VM still lists it | Use `-a <disk>.qcow2` instead of `-d <vm>` |
 | `qemu-img info exited with error status 1` | The disk is locked while the VM runs | `virsh shutdown <vm>` first |
+| Commands after `exit` failed with "Permission denied" | They ran on gelkube, not the jumpbox | Check the prompt before pasting |
 
 ## What I learned
 
