@@ -562,6 +562,338 @@ for host in server node-0 node-1; do ssh root@${host} hostname; done
 
 ## Step 5: Certificate authority and TLS certificates
 
+> In my KubeCon notes: *"Apiserver needs certs."* This is where they come from.
+
+### Key ideas, explained like you're 5
+
+| Term | Simple picture | What it really is |
+|---|---|---|
+| **Certificate (`.crt`)** | An **ID badge** saying "I am node-0" | A public file with a name, signed by a CA |
+| **Private key (`.key`)** | The badge owner's **secret signature** | Proves you own the badge. Never shared. |
+| **CA (Certificate Authority)** | The **school office** that prints badges | A key and certificate that sign every other certificate. Anything it signed is trusted. |
+| **CSR** | The **application form** for a badge | A request saying "please sign a certificate with this name" |
+| **TLS** | "Show me your badge, I'll show you mine, then we talk in code" | Encrypted, mutually authenticated connections |
+| **CN / O** | Name and group on the badge | Kubernetes reads **CN as the username** and **O as the group** |
+
+### 5.1 Create the CA
+
+**Why:** every other badge gets stamped by this office, and every component trusts it.
+
+**Commands** (on the jumpbox):
+```bash
+cd ~/kubernetes-the-hard-way
+openssl genrsa -out ca.key 4096
+openssl req -x509 -new -sha512 -noenc -key ca.key -days 3653 -config ca.conf -out ca.crt
+openssl x509 -in ca.crt -noout -subject -issuer -dates
+```
+
+**What it does:**
+- `openssl genrsa -out ca.key 4096`: creates the CA's 4096-bit **private key** (the office's secret stamp)
+- `openssl req -x509 -new ...`: creates the CA's own certificate, **self-signed** with its own key. `-config ca.conf` reads the guide's settings, and `-days 3653` means valid for 10 years.
+- `openssl x509 -noout -subject -issuer -dates`: prints who the certificate is for, who signed it, and when it's valid
+
+**What happened:**
+```
+subject=C = US, ST = Washington, L = Seattle, CN = CA
+issuer=C = US, ST = Washington, L = Seattle, CN = CA     ← same as subject = self-signed
+notBefore=Nov 17 16:04:50 2026 GMT
+notAfter=Nov 17 16:04:50 2036 GMT
+```
+
+### 5.2 Create a certificate for every component
+
+**Why:** every part of Kubernetes proves who it is with its own badge.
+
+**Commands:**
+```bash
+certs=("admin" "node-0" "node-1" "kube-proxy" "kube-scheduler"
+       "kube-controller-manager" "kube-api-server" "service-accounts")
+for i in ${certs[*]}; do
+  openssl genrsa -out "${i}.key" 4096
+  openssl req -new -key "${i}.key" -sha256 -config ca.conf -section ${i} -out "${i}.csr"
+  openssl x509 -req -days 3653 -in "${i}.csr" -copy_extensions copyall -sha256 \
+    -CA ca.crt -CAkey ca.key -CAcreateserial -out "${i}.crt"
+done
+```
+
+**What it does** (for each component):
+1. `genrsa`: makes its private key
+2. `req -new ... -section ${i}`: fills out a CSR (application form) using that component's section of `ca.conf`
+3. `x509 -req ... -CA ca.crt -CAkey ca.key`: the CA signs the form and produces the `.crt`. `-copy_extensions copyall` keeps extras like alternate names.
+
+**What happened:**
+
+| Badge | CN (username) | O (group) | Meaning |
+|---|---|---|---|
+| admin | `admin` | `system:masters` | Me. Full-power admin group. |
+| node-0 / node-1 | `system:node:node-0` | `system:nodes` | Kubernetes requires this exact format, so each node can only manage its own pods |
+| kube-proxy | `system:kube-proxy` | `system:node-proxier` | Built-in identity with network permissions |
+| kube-scheduler | `system:kube-scheduler` | `system:system:kube-scheduler` | (The doubled `system:` is a typo in the guide. It's harmless, because permissions come from the CN.) |
+| kube-controller-manager | `system:kube-controller-manager` | — | Built-in identity |
+| kube-api-server | `kubernetes` | — | The API server's own badge |
+| service-accounts | `service-accounts` | — | Used to sign tokens for pods |
+
+The API server's **Subject Alternative Names** list every name it can be reached by:
+```
+IP:127.0.0.1, IP:10.32.0.1, DNS:kubernetes, DNS:kubernetes.default, ... DNS:server.kubernetes.local
+```
+- `server.kubernetes.local`: how the jumpbox and nodes reach it
+- `127.0.0.1`: when the server talks to itself
+- `10.32.0.1` and `kubernetes.default...`: how **pods inside the cluster** reach it, through a built-in Service
+
+### 5.3 Deliver the certificates
+
+**Why:** each machine needs its own badge and key, plus `ca.crt` to check everyone else's.
+
+**Commands:**
+```bash
+for host in node-0 node-1; do
+  ssh root@${host} mkdir -p /var/lib/kubelet/
+  scp ca.crt root@${host}:/var/lib/kubelet/
+  scp ${host}.crt root@${host}:/var/lib/kubelet/kubelet.crt
+  scp ${host}.key root@${host}:/var/lib/kubelet/kubelet.key
+done
+scp ca.key ca.crt kube-api-server.key kube-api-server.crt \
+    service-accounts.key service-accounts.crt root@server:~/
+```
+
+**What it does:**
+- Each node gets **only its own** badge, renamed to `kubelet.crt`/`.key` where the kubelet looks for it
+- The server also gets `ca.key`, because the controller-manager signs some certificates automatically
+
+**What happened:** all files copied. The server got 7 files, and each node got `ca.crt`, `kubelet.crt` and `kubelet.key`. ✅
+
+---
+
+## Step 6: Kubeconfigs, the "visitor passes"
+
+**Explained like you're 5:** a badge says **who** you are, but a component also needs to know **where** the front desk is. A **kubeconfig** staples together:
+1. 📍 **Where:** the API server's address
+2. 🏫 **The CA's certificate**, to verify the API server is real
+3. 🪪 **My certificate and key**, to prove who I am
+
+### 6.1 Create the kubeconfigs
+
+**Commands:**
+```bash
+make_kc() {
+  local name=$1 user=$2 server=$3
+  kubectl config set-cluster kubernetes-the-hard-way --certificate-authority=ca.crt \
+    --embed-certs=true --server=$server --kubeconfig=$name.kubeconfig
+  kubectl config set-credentials $user --client-certificate=$name.crt \
+    --client-key=$name.key --embed-certs=true --kubeconfig=$name.kubeconfig
+  kubectl config set-context default --cluster=kubernetes-the-hard-way \
+    --user=$user --kubeconfig=$name.kubeconfig
+  kubectl config use-context default --kubeconfig=$name.kubeconfig
+}
+S=https://server.kubernetes.local:6443
+make_kc node-0 system:node:node-0 $S
+make_kc node-1 system:node:node-1 $S
+make_kc kube-proxy system:kube-proxy $S
+make_kc kube-controller-manager system:kube-controller-manager $S
+make_kc kube-scheduler system:kube-scheduler $S
+make_kc admin admin https://127.0.0.1:6443
+```
+
+**What it does:**
+- `make_kc() { ... }`: defines a reusable shell **function** (a recipe), so the four steps are written once and used six times
+- `set-cluster`: where the API server is, plus the CA to trust. `--embed-certs` copies the certificate **into** the file, so the kubeconfig is self-contained.
+- `set-credentials`: which certificate and key to log in with
+- `set-context` / `use-context`: "use this cluster with this user"
+- `admin` points at `127.0.0.1`, because the guide first runs kubectl **on the server itself**
+
+**What happened:** six files were created: `admin`, `kube-controller-manager`, `kube-proxy`, `kube-scheduler`, `node-0` and `node-1` `.kubeconfig`. ✅
+
+### 6.2 Deliver the kubeconfigs
+
+**Commands:**
+```bash
+for host in node-0 node-1; do
+  ssh root@${host} "mkdir -p /var/lib/{kube-proxy,kubelet}"
+  scp kube-proxy.kubeconfig root@${host}:/var/lib/kube-proxy/kubeconfig
+  scp ${host}.kubeconfig root@${host}:/var/lib/kubelet/kubeconfig
+done
+scp admin.kubeconfig kube-controller-manager.kubeconfig kube-scheduler.kubeconfig root@server:~/
+```
+
+**What happened:** all copied. ✅
+
+---
+
+## Step 7: Data encryption key
+
+**Why:** etcd stores Kubernetes **Secrets** (passwords, tokens). Without encryption, anyone who copied the etcd data file could read them.
+
+**Explained like you're 5:** we give the front desk a **lock**, so Secret pages are scrambled before they're written in the notebook.
+
+**Commands:**
+```bash
+export ENCRYPTION_KEY=$(head -c 32 /dev/urandom | base64)
+envsubst < configs/encryption-config.yaml > encryption-config.yaml
+cat encryption-config.yaml
+scp encryption-config.yaml root@server:~/
+```
+
+**What it does:**
+- `head -c 32 /dev/urandom`: takes 32 random bytes, which makes a 256-bit key. `base64` turns them into text.
+- `envsubst`: fills `${ENCRYPTION_KEY}` into the template (it's from the `gettext-base` package, which was already installed)
+
+**What happened:**
+```yaml
+resources:
+  - resources: [secrets]          ← only Secrets get encrypted
+    providers:
+      - aescbc:                   ← used first: new Secrets are written with AES
+          keys: [{name: key1, secret: <random key>}]
+      - identity: {}              ← fallback: lets it read anything written before encryption existed
+```
+
+---
+
+## Step 8: Bootstrap etcd, the cluster's memory
+
+**Explained like you're 5:** etcd is the **notebook** where the cluster writes down everything. Only the front desk (API server) writes in it.
+
+**Commands:**
+```bash
+# on the jumpbox
+scp downloads/controller/etcd downloads/client/etcdctl units/etcd.service root@server:~/
+ssh root@server
+
+# on the server
+mv etcd etcdctl /usr/local/bin/
+mkdir -p /etc/etcd /var/lib/etcd && chmod 700 /var/lib/etcd
+cp ca.crt kube-api-server.key kube-api-server.crt /etc/etcd/
+mv etcd.service /etc/systemd/system/
+systemctl daemon-reload && systemctl enable --now etcd
+etcdctl member list
+etcdctl put /demo/hello kubecon && etcdctl get /demo/hello
+```
+
+**What it does:**
+- `/usr/local/bin/`: where locally installed programs go
+- `/var/lib/etcd` with `chmod 700`: etcd's data folder, which only root can open
+- `etcd.service`: a **systemd unit**, the "babysitter instructions" that start etcd at boot and restart it if it crashes
+- `systemctl daemon-reload`: makes systemd read the new unit file. `enable --now` starts it now and at every boot.
+- `etcdctl put` / `get`: write a key, then read it back (the same demo I watched at KubeCon)
+
+**What happened:**
+```
+6702b0a34e2cfd39, started, controller, http://127.0.0.1:2380, http://127.0.0.1:2379, false
+OK
+/demo/hello
+kubecon
+```
+
+| Field | Meaning |
+|---|---|
+| `6702b0a34e2cfd39` | Member ID |
+| `started` | Running |
+| `controller` | Member name |
+| `:2380` | Peer port (etcd ↔ etcd). Unused with one member. |
+| `:2379` | Client port (API server ↔ etcd) |
+| `false` | A full member, not a "learner" |
+
+etcd only listens on `127.0.0.1`, so only programs on the server can reach it. That's on purpose.
+
+---
+
+## Step 9: Bootstrap the control plane, the cluster's brain
+
+| Component | Like you're 5 | What it really does |
+|---|---|---|
+| **kube-apiserver** | The **front desk** | The only entry point to the cluster. Checks badges and permissions, and reads/writes etcd. |
+| **kube-scheduler** | The **seating planner** | Watches for pods with no node and picks one for each |
+| **kube-controller-manager** | The **checker** | Runs control loops: "does reality match the plan? If not, fix it." |
+
+### 9.1 Install and start the control plane
+
+**Commands:**
+```bash
+# on the jumpbox
+scp downloads/controller/kube-{apiserver,controller-manager,scheduler} downloads/client/kubectl \
+  units/kube-{apiserver,controller-manager,scheduler}.service \
+  configs/kube-scheduler.yaml configs/kube-apiserver-to-kubelet.yaml root@server:~/
+ssh root@server
+
+# on the server
+mv kube-apiserver kube-controller-manager kube-scheduler kubectl /usr/local/bin/
+mkdir -p /etc/kubernetes/config /var/lib/kubernetes/
+mv ca.crt ca.key kube-api-server.key kube-api-server.crt service-accounts.key \
+   service-accounts.crt encryption-config.yaml \
+   kube-controller-manager.kubeconfig kube-scheduler.kubeconfig /var/lib/kubernetes/
+mv kube-scheduler.yaml /etc/kubernetes/config/
+mv kube-apiserver.service kube-controller-manager.service kube-scheduler.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now kube-apiserver kube-controller-manager kube-scheduler
+sleep 10
+kubectl cluster-info --kubeconfig admin.kubeconfig
+```
+
+**What it does:**
+- `kube-{apiserver,controller-manager,scheduler}`: shell "brace expansion", a shorthand that expands to three names
+- `/var/lib/kubernetes/`: the control plane's private folder for certificates, keys, the encryption config and its kubeconfigs
+- `enable --now`: starts all three now and at every boot
+- `sleep 10`: gives the API server time to start before checking
+
+**What happened (first try):** ❌ I pasted the server commands while still on the **jumpbox**:
+```
+mv: cannot stat 'kube-apiserver': No such file or directory
+Failed to enable unit: Unit file kube-apiserver.service does not exist.
+```
+Worse, the one `mv` that *could* run moved the jumpbox's `ca.crt`, `ca.key` and other files into `/var/lib/kubernetes/` on the jumpbox. Fixed with:
+```bash
+mv /var/lib/kubernetes/* ~/kubernetes-the-hard-way/
+rmdir /var/lib/kubernetes && rm -rf /etc/kubernetes
+```
+
+**What happened (on the server):** ✅
+```
+Created symlink .../kube-apiserver.service ...
+Kubernetes control plane is running at https://127.0.0.1:6443
+```
+
+### 9.2 Allow the API server to talk to kubelets (RBAC)
+
+**Why:** for `kubectl logs` and `kubectl exec`, the API server has to call each node's kubelet. With **RBAC** (role-based access control), even the API server needs written permission.
+
+**Commands** (on the server):
+```bash
+kubectl apply -f kube-apiserver-to-kubelet.yaml --kubeconfig admin.kubeconfig
+```
+
+**What it does:**
+- **ClusterRole `system:kube-apiserver-to-kubelet`**: a permission slip covering `nodes/proxy`, `nodes/stats`, `nodes/log`, `nodes/spec` and `nodes/metrics`, with all verbs (`"*"`)
+- **ClusterRoleBinding**: gives that slip to the **User `kubernetes`**, which is the CN on the API server's certificate
+
+**What happened:**
+```
+clusterrole.rbac.authorization.k8s.io/system:kube-apiserver-to-kubelet created
+clusterrolebinding.rbac.authorization.k8s.io/system:kube-apiserver created
+```
+(In my terminal the first line was glued onto `name: kubernetes`, because the YAML file has no trailing newline.)
+
+### 9.3 Check the API server from the jumpbox
+
+**Commands** (on the jumpbox):
+```bash
+curl --cacert ca.crt https://server.kubernetes.local:6443/version
+```
+
+**What it does:** calls the API over the network, and only trusts the answer if the server's certificate was signed by **my** CA.
+
+**What happened:**
+```json
+{ "major": "1", "minor": "32", "gitVersion": "v1.32.3", "platform": "linux/amd64", ... }
+```
+**The control plane is up.** 🧠 ✅
+
+> ⚠️ **Lesson:** when I pasted `exit` followed by `curl`, the `curl` line was swallowed while the connection closed. Run `exit` by itself, wait for the prompt, and then paste the next command.
+
+---
+
+## Step 10: Bootstrap the worker nodes
+
 *Coming next.*
 
 ---
@@ -575,6 +907,8 @@ for host in server node-0 node-1; do ssh root@${host} hostname; done
 | `virt-cat -d jumpbox` error: `cloudinit.iso: No such file` | virt-install deletes the CD after first boot, but the VM still lists it | Use `-a <disk>.qcow2` instead of `-d <vm>` |
 | `qemu-img info exited with error status 1` | The disk is locked while the VM runs | `virsh shutdown <vm>` first |
 | Commands after `exit` failed with "Permission denied" | They ran on gelkube, not the jumpbox | Check the prompt before pasting |
+| `mv: cannot stat 'kube-apiserver'` and CA files moved on the jumpbox | Server commands were pasted on the jumpbox | Moved the files back from `/var/lib/kubernetes/`, then reran on the server |
+| A command after `exit` never ran | Pasted text gets swallowed while the SSH session closes | Run `exit` alone, then paste |
 
 ## What I learned
 
