@@ -1,7 +1,7 @@
 # 03: Kubernetes the Hard Way
 
 **Date started:** 2026-11-17
-**Status:** 🚧 In progress
+**Status:** ✅ Cluster built (break-it exercises next)
 **Phase:** 1
 
 > **How to read this doc:** every step has the same four parts:
@@ -1142,9 +1142,92 @@ HTTP/1.1 200 OK        ← via node-0 ✅
 
 ---
 
-## Step 14: Make the pod routes survive reboots
+## Step 14: Make the pod routes survive reboots, then do a reboot test
 
-*Coming next.*
+### 14.1 A boot-time service that restores the routes
+
+**Why:** the `ip route add` commands from Step 12 only last until the next reboot.
+
+**Commands** (on the jumpbox):
+```bash
+cat > pod-routes.service <<'EOF'
+[Unit]
+Description=Routes to pod subnets on other nodes
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/pod-routes.sh
+[Install]
+WantedBy=multi-user.target
+EOF
+declare -A R=([server]="10.200.0.0/24 via 192.168.122.20,10.200.1.0/24 via 192.168.122.21"
+              [node-0]="10.200.1.0/24 via 192.168.122.21"
+              [node-1]="10.200.0.0/24 via 192.168.122.20")
+for h in server node-0 node-1; do
+  { echo '#!/bin/sh'; echo "${R[$h]}" | tr , '\n' | sed 's/^/ip route replace /'; } > pod-routes.sh
+  scp pod-routes.sh root@$h:/usr/local/sbin/ && scp pod-routes.service root@$h:/etc/systemd/system/
+  ssh root@$h "chmod +x /usr/local/sbin/pod-routes.sh && systemctl daemon-reload && systemctl enable --now pod-routes"
+done
+```
+
+**What it does:**
+- `declare -A R=(...)`: a bash **associative array**, a lookup table from machine name to that machine's routes. A node must **not** get a route to its own block.
+- `tr , '\n' | sed 's/^/ip route replace /'`: splits the routes onto separate lines and turns each one into a command
+- `ip route replace`: adds the route, or updates it if it exists, so it's safe to run more than once
+- `Type=oneshot` + `RemainAfterExit=yes`: run once at boot, and count as "active" afterwards
+- `After=network-online.target`: wait until the network is up
+
+**What happened:** the server's script was 110 bytes (2 routes), and each node's was 60 bytes (1 route). That confirms each machine got its own routes. ✅
+
+### 14.2 Reboot test
+
+**Why:** a setup isn't finished until it survives a reboot.
+
+**Commands:**
+```bash
+for h in server node-0 node-1; do ssh root@$h reboot; done
+sleep 60
+kubectl get nodes
+ssh root@node-0 "ip route | grep 10.200; sysctl -n net.ipv4.ip_forward"
+curl -sS -I -m 5 http://node-0:$PORT | head -1
+```
+
+**What happened (after 60 seconds):**
+```
+Unable to connect to the server: dial tcp 192.168.122.11:6443: connect: no route to host
+10.200.1.0/24 via 192.168.122.21 dev enp1s0       ← route restored ✅
+1                                                  ← ip_forward kept ✅
+curl: (7) Failed to connect to node-0 port 32291   ← waiting on the API server
+```
+The **server** boots slowest, because it starts etcd, then the API server, then the scheduler and controller-manager. kube-proxy rebuilds its NodePort rules by asking the API server, so the NodePort waits on it too.
+
+**What happened (about a minute later):**
+```
+64 bytes from server.kubernetes.local (192.168.122.11): icmp_seq=1 ttl=64 time=0.726 ms
+NAME     STATUS   ROLES    AGE     VERSION
+node-0   Ready    <none>   9m48s   v1.32.3
+node-1   Ready    <none>   9m43s   v1.32.3
+HTTP/1.1 200 OK
+```
+**Everything came back on its own after a full reboot. ✅🎉**
+
+---
+
+## Result
+
+A Kubernetes v1.32.3 cluster, built entirely by hand:
+- A CA and 9 TLS certificates, 6 kubeconfigs, and Secrets encrypted at rest
+- etcd, kube-apiserver, kube-scheduler and kube-controller-manager on `server`
+- containerd, kubelet, kube-proxy and CNI bridge networking on `node-0` and `node-1`
+- Cross-node pod routing and a working NodePort Service
+- Everything survives a reboot
+
+## Next up
+
+- **Break it on purpose** (from the KubeCon "CNI errors worth recognising" slide): remove the CNI config, shrink the pod CIDR, and explore `ip netns` and `ip route` on a node
+- Then **Phase 2:** k3s + Argo CD
 
 ---
 
@@ -1159,6 +1242,7 @@ HTTP/1.1 200 OK        ← via node-0 ✅
 | Commands after `exit` failed with "Permission denied" | They ran on gelkube, not the jumpbox | Check the prompt before pasting |
 | `mv: cannot stat 'kube-apiserver'` and CA files moved on the jumpbox | Server commands were pasted on the jumpbox | Moved the files back from `/var/lib/kubernetes/`, then reran on the server |
 | A command after `exit` never ran | Pasted text gets swallowed while the SSH session closes | Run `exit` alone, then paste |
+| After a reboot: `no route to host` to the server, NodePort refused | The server was still booting, and kube-proxy waits for the API server | Wait about a minute |
 | NodePort via node-0 timed out, but node-1 worked | `net.ipv4.ip_forward = 0` on node-0. The CNI only turns it on when a pod is created on that node. | `net.ipv4.ip_forward = 1` in `/etc/sysctl.d/kubernetes.conf` on every node |
 
 ## What I learned
