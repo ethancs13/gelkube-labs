@@ -1,0 +1,14 @@
+[Unit]
+Description=gelkube status JSON for the ESP32 dashboard
+After=network-online.target libvirtd.service
+Wants=network-online.target
+
+[Service]
+User=ethansroka
+Environment=LIBVIRT_DEFAULT_URI=qemu:///system
+ExecStart=/usr/bin/python3 /home/ethansroka/gelkube-labs/host/status-exporter/gelkube_status.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

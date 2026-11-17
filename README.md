@@ -112,7 +112,8 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 ### Hardware projects
 | Tech | What it does here | Phase | Status |
 |---|---|---|---|
-| ESP32-2432S028 + [LovyanGFX](https://github.com/lovyan03/LovyanGFX) | [gelcube-buddy](esp32/gelcube-buddy/): animated mascot now, live lab status later | 6 | 🚧 |
+| ESP32-2432S028 + [LovyanGFX](https://github.com/lovyan03/LovyanGFX) | [gelkube-dash](esp32/gelkube-dash/): cube mascot, live map with traffic dots, health stats ([gelcube-buddy](esp32/gelcube-buddy/) is the mascot on its own) | 6 | 🚧 |
+| [gelkube-status](host/status-exporter/) (Python) | Serves the lab's health as JSON for the ESP32 | 6 | 🚧 |
 
 ## Roadmap
 

@@ -30,3 +30,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# ESP32 Wi-Fi passwords
+esp32/**/secrets.h
