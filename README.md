@@ -67,12 +67,12 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 ### Kubernetes the Hard Way (learning cluster)
 | Tech | What it does here | Phase | Status |
 |---|---|---|---|
-| [Kubernetes the Hard Way](https://github.com/kelseyhightower/kubernetes-the-hard-way) | Guide for building a cluster by hand: jumpbox, server, node-0, node-1 | 1 | ⏳ |
-| [etcd](https://etcd.io/) | Stores all cluster state | 1 | ⏳ |
-| kube-apiserver, kube-scheduler, kube-controller-manager | The control plane | 1 | ⏳ |
-| kubelet, kube-proxy | Run on each worker node | 1 | ⏳ |
-| [containerd](https://containerd.io/) | Container runtime | 1 | ⏳ |
-| [CNI plugins](https://www.cni.dev/) | Pod networking (bridge plus host-local IPAM) | 1 | ⏳ |
+| [Kubernetes the Hard Way](https://github.com/kelseyhightower/kubernetes-the-hard-way) | Guide for building a cluster by hand: jumpbox, server, node-0, node-1 | 1 | ✅ |
+| [etcd](https://etcd.io/) | Stores all cluster state | 1 | ✅ |
+| kube-apiserver, kube-scheduler, kube-controller-manager | The control plane | 1 | ✅ |
+| kubelet, kube-proxy | Run on each worker node | 1 | ✅ |
+| [containerd](https://containerd.io/) | Container runtime | 1 | ✅ |
+| [CNI plugins](https://www.cni.dev/) | Pod networking (bridge plus host-local IPAM) | 1 | ✅ |
 
 ### Main cluster and GitOps
 | Tech | What it does here | Phase | Status |
@@ -117,7 +117,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 ## Roadmap
 
 - [x] **Phase 0: Base server.** Ubuntu Server, SSH keys and Tailscale ✅
-- [ ] **Phase 1: Kubernetes the Hard Way.** Build a cluster by hand on 4 VMs, then break and fix the networking (🚧 VMs created)
+- [ ] **Phase 1: Kubernetes the Hard Way.** Build a cluster by hand on 4 VMs, then break and fix the networking (🚧 cluster built, smoke tests pass)
 - [ ] **Phase 2: Main cluster.** k3s, Argo CD and Helm, with everything deployed from this repo
 - [ ] **Phase 3: Services.** Tailscale operator, AdGuard Home, Sealed Secrets, Vaultwarden and backups
 - [ ] **Phase 4: Observability.** Prometheus, Grafana, OpenTelemetry and Uptime Kuma

@@ -894,6 +894,256 @@ curl --cacert ca.crt https://server.kubernetes.local:6443/version
 
 ## Step 10: Bootstrap the worker nodes
 
+| Component | Like you're 5 | What it really does |
+|---|---|---|
+| **containerd + runc** | The **machinery** | Downloads images and starts/stops containers. runc creates the actual Linux container. |
+| **kubelet** | The node's **foreman** | Registers the node, watches the API server for pods assigned to it, and tells containerd to run them |
+| **kube-proxy** | The **mail sorter** | Programs iptables rules so a Service's address delivers to the right pods |
+| **CNI plugins** | The **contractor** | When a pod is created, builds its network and gives it an IP from the node's block |
+
+### 10.1 Fill in each node's config and deliver its parts
+
+**Commands** (on the jumpbox):
+```bash
+for HOST in node-0 node-1; do
+  SUBNET=$(grep ${HOST} machines.txt | cut -d " " -f 4)
+  sed "s|SUBNET|$SUBNET|g" configs/10-bridge.conf > 10-bridge.conf
+  sed "s|SUBNET|$SUBNET|g" configs/kubelet-config.yaml > kubelet-config.yaml
+  ssh root@${HOST} mkdir -p cni-plugins
+  scp 10-bridge.conf kubelet-config.yaml downloads/worker/* downloads/client/kubectl \
+      configs/99-loopback.conf configs/containerd-config.toml configs/kube-proxy-config.yaml \
+      units/containerd.service units/kubelet.service units/kube-proxy.service root@${HOST}:~/
+  scp downloads/cni-plugins/* root@${HOST}:~/cni-plugins/
+done
+cat 10-bridge.conf
+```
+
+**What it does:**
+- `grep ${HOST} machines.txt | cut -d " " -f 4`: finds the node's line and takes column 4 (its pod subnet)
+- `sed "s|SUBNET|$SUBNET|g"`: replaces the placeholder `SUBNET` in the template with the real value
+
+**What happened** (node-1's CNI config):
+```json
+{
+  "type": "bridge", "bridge": "cni0", "isGateway": true, "ipMasq": true,
+  "ipam": { "type": "host-local", "ranges": [[{"subnet": "10.200.1.0/24"}]], "routes": [{"dst": "0.0.0.0/0"}] }
+}
+```
+
+| Setting | Meaning (from the "Pod Creation to First Packet" talk) |
+|---|---|
+| `bridge` / `cni0` | Build a virtual switch, the **street** every pod plugs into |
+| `isGateway: true` | The bridge is also the pods' way out, the **signpost** |
+| `ipMasq: true` | Pods leaving the node borrow the node's address (NAT) |
+| `host-local` + subnet | Hand out **house numbers** from this node's block (the IPAM) |
+| `routes 0.0.0.0/0` | Default route: "for anywhere else, go through the gateway" |
+
+### 10.2 Set up both nodes with one script
+
+**Why:** running the same steps on two machines by hand invites mistakes (I'd already pasted commands on the wrong machine once). A script runs the exact same steps everywhere.
+
+**Commands** (on the jumpbox):
+```bash
+cat > node-setup.sh <<'SCRIPT'
+set -euo pipefail
+apt-get update -qq && apt-get -y -qq install socat conntrack ipset kmod iptables
+mkdir -p /etc/cni/net.d /opt/cni/bin /var/lib/kubelet /var/lib/kube-proxy \
+         /var/lib/kubernetes /var/run/kubernetes /etc/containerd
+cd ~
+mv crictl kube-proxy kubelet runc kubectl /usr/local/bin/
+mv containerd containerd-shim-runc-v2 containerd-stress ctr /bin/
+mv cni-plugins/* /opt/cni/bin/ && mv 10-bridge.conf 99-loopback.conf /etc/cni/net.d/
+modprobe br-netfilter && echo br-netfilter >> /etc/modules-load.d/modules.conf
+printf 'net.bridge.bridge-nf-call-iptables = 1\nnet.bridge.bridge-nf-call-ip6tables = 1\n' > /etc/sysctl.d/kubernetes.conf
+sysctl -p /etc/sysctl.d/kubernetes.conf
+mv containerd-config.toml /etc/containerd/config.toml
+mv kubelet-config.yaml /var/lib/kubelet/ && mv kube-proxy-config.yaml /var/lib/kube-proxy/
+mv containerd.service kubelet.service kube-proxy.service /etc/systemd/system/
+systemctl daemon-reload && systemctl enable --now containerd kubelet kube-proxy
+systemctl is-active containerd kubelet kube-proxy
+SCRIPT
+for HOST in node-0 node-1; do
+  echo "===== $HOST"; scp node-setup.sh root@$HOST:~/ && ssh root@$HOST bash node-setup.sh
+done
+sleep 20; ssh root@server "kubectl get nodes -o wide --kubeconfig admin.kubeconfig"
+```
+
+**What it does:**
+- `<<'SCRIPT'`: a heredoc with a **quoted** delimiter, so `$` variables are written into the file literally instead of being filled in on the jumpbox
+- `set -euo pipefail`: stop at the first error, treat unset variables as errors, and catch failures inside pipes
+- `socat conntrack ipset iptables`: networking tools that kubelet and kube-proxy need
+- `/opt/cni/bin` / `/etc/cni/net.d`: where containerd finds the CNI programs / the CNI configs
+- `br-netfilter` + `bridge-nf-call-iptables = 1`: lets iptables (and so kube-proxy's rules) see traffic that crosses the `cni0` bridge
+- `systemctl is-active`: prints `active` for each running service
+
+**What happened:** `active active active` on both nodes. (The `debconf: unable to initialize frontend` messages are harmless. apt just noticed there was no interactive terminal.)
+```
+NAME     STATUS   ROLES    AGE   VERSION   INTERNAL-IP      OS-IMAGE                         CONTAINER-RUNTIME
+node-0   Ready    <none>   20s   v1.32.3   192.168.122.20   Debian GNU/Linux 12 (bookworm)   containerd://2.1.0-beta.0
+node-1   Ready    <none>   15s   v1.32.3   192.168.122.21   Debian GNU/Linux 12 (bookworm)   containerd://2.1.0-beta.0
+```
+**Both nodes Ready. A hand-built Kubernetes cluster.** 🎉
+
+---
+
+## Step 11: kubectl on the jumpbox
+
+**Why:** a real admin runs kubectl from their own machine, not on the control plane.
+
+**Commands** (on the jumpbox):
+```bash
+kubectl config set-cluster kubernetes-the-hard-way --certificate-authority=ca.crt \
+  --embed-certs=true --server=https://server.kubernetes.local:6443
+kubectl config set-credentials admin --client-certificate=admin.crt --client-key=admin.key
+kubectl config set-context kubernetes-the-hard-way --cluster=kubernetes-the-hard-way --user=admin
+kubectl config use-context kubernetes-the-hard-way
+kubectl get nodes
+```
+
+**What it does:** the same four kubeconfig steps as Step 6, but saved as the **default** config in `~/.kube/config`, so `--kubeconfig` isn't needed any more.
+
+**What happened:** `node-0 Ready`, `node-1 Ready`. ✅
+
+---
+
+## Step 12: Pod network routes, the signposts 🪧
+
+**Why:** each node knows its own pod block, but not the other node's. node-0 had no idea where `10.200.1.x` lives.
+
+**Commands** (on the jumpbox):
+```bash
+ssh root@server "ip route add 10.200.0.0/24 via 192.168.122.20; ip route add 10.200.1.0/24 via 192.168.122.21"
+ssh root@node-0 "ip route add 10.200.1.0/24 via 192.168.122.21"
+ssh root@node-1 "ip route add 10.200.0.0/24 via 192.168.122.20"
+ssh root@node-0 ip route | grep 10.200
+```
+
+**What it does:** `ip route add <block> via <node>` means "send traffic for this pod block to that node." Real clusters use a CNI like **Cilium** or **Calico** to do this automatically.
+
+**What happened:**
+```
+10.200.1.0/24 via 192.168.122.21 dev enp1s0
+```
+node-0 doesn't have a route to its **own** block (`10.200.0.0/24 dev cni0`) yet, because the CNI only builds the `cni0` bridge when the first pod is scheduled there.
+
+⚠️ These routes are **not saved**. They disappear when a VM reboots (fixed in Step 14).
+
+---
+
+## Step 13: Smoke test
+
+### 13.1 Secrets are encrypted in etcd
+
+**Commands:**
+```bash
+kubectl create secret generic kubernetes-the-hard-way --from-literal="mykey=mydata"
+ssh root@server 'etcdctl get /registry/secrets/default/kubernetes-the-hard-way | hexdump -C | head -12'
+```
+
+**What it does:** stores a Secret, then reads the **raw bytes** straight from etcd, bypassing the API server. `hexdump -C` shows bytes on the left and readable text on the right.
+
+**What happened:**
+```
+00000000  2f 72 65 67 69 73 74 72  79 2f 73 65 63 72 65 74  |/registry/secret|
+...
+00000030  79 0a 6b 38 73 3a 65 6e  63 3a 61 65 73 63 62 63  |y.k8s:enc:aescbc|
+00000040  3a 76 31 3a 6b 65 79 31  3a 98 ac 2c 16 c6 d8 4b  |:v1:key1:..,...K|
+00000050  6a 09 2d 23 5f 78 41 62  45 96 6b fb 2e 27 0a e5  |j.-#_xAbE.k..'..|
+```
+- `/registry/secrets/default/<name>`: where Kubernetes stores the Secret in etcd
+- `k8s:enc:aescbc:v1:key1:`: "encrypted with AES using key1"
+- Everything after it is scrambled, and `mydata` appears nowhere. ✅
+
+### 13.2 Run a pod
+
+**Commands:**
+```bash
+kubectl create deployment nginx --image=nginx:latest
+sleep 20
+kubectl get pods -l app=nginx -o wide
+```
+
+**What it does:** a **Deployment** asks for one nginx pod to always be running. The controller-manager creates the pod, the scheduler picks a node, and that node's kubelet has containerd pull and start nginx, with the CNI giving it an IP.
+
+**What happened:**
+```
+NAME                     READY   STATUS    IP           NODE
+nginx-54c98b4f84-48z78   1/1     Running   10.200.1.2   node-1
+```
+- Name = Deployment + ReplicaSet ID + pod ID
+- IP `10.200.1.2` comes from node-1's block (`.1` is the `cni0` gateway)
+
+### 13.3 Logs, exec, cross-node traffic and a Service
+
+**Commands:**
+```bash
+POD=$(kubectl get pods -l app=nginx -o jsonpath="{.items[0].metadata.name}")
+kubectl logs $POD | tail -3
+kubectl exec $POD -- nginx -v
+ssh root@node-0 "curl -sI http://10.200.1.2 | head -1"
+kubectl expose deployment nginx --port 80 --type NodePort
+PORT=$(kubectl get svc nginx -o jsonpath='{.spec.ports[0].nodePort}')
+curl -sS -I -m 5 http://node-0:$PORT | head -1
+curl -sS -I -m 5 http://node-1:$PORT | head -1
+```
+
+**What each check proves:**
+
+| Check | Proves |
+|---|---|
+| `kubectl logs` / `exec` | The RBAC permission from Step 9.2 (API server → kubelet) |
+| `curl` from node-0 to `10.200.1.2` | The routes from Step 12 (node-0 → pod on node-1) |
+| `expose --type NodePort` + `curl node-X:PORT` | kube-proxy: a Service opens the same port (30000–32767) on **every** node |
+
+**What happened:**
+```
+[notice] 1#1: start worker process 29        ← logs ✅
+nginx version: nginx/1.31.8                  ← exec ✅
+HTTP/1.1 200 OK                              ← node-0 → pod on node-1 ✅
+NodePort: 32291
+curl: (28) Connection timed out after 5001 milliseconds   ← via node-0 ❌
+HTTP/1.1 200 OK                                           ← via node-1 ✅
+```
+
+#### Debugging the node-0 timeout
+
+| Test | Result |
+|---|---|
+| Call **node-1** (the pod is there) | ✅ |
+| node-0 **itself** calls the pod on node-1 | ✅ |
+| Call **node-0**, which must **pass the request on** to node-1 | ❌ |
+
+So node-0 could send **its own** traffic, but wouldn't **pass along** someone else's. That's **IP forwarding**, which Linux leaves **off** by default.
+
+**Explained like you're 5:** node-0 mails its own letters, but drops letters it's asked to pass on to another town. node-1 forwards because the CNI turned forwarding on when it built the bridge for the nginx pod. node-0 had no pods, so nothing ever turned it on.
+
+**Checking the theory:**
+```bash
+for h in node-0 node-1; do echo -n "$h: "; ssh root@$h sysctl -n net.ipv4.ip_forward; done
+```
+```
+node-0: 0
+node-1: 1
+```
+
+**The fix** (on both nodes, saved for reboots):
+```bash
+for h in node-0 node-1; do
+  ssh root@$h "echo 'net.ipv4.ip_forward = 1' >> /etc/sysctl.d/kubernetes.conf && sysctl -p /etc/sysctl.d/kubernetes.conf"
+done
+curl -sS -I -m 5 http://node-0:$PORT | head -1
+```
+```
+net.ipv4.ip_forward = 1
+HTTP/1.1 200 OK        ← via node-0 ✅
+```
+
+**Every smoke test passes. ✅🎉**
+
+---
+
+## Step 14: Make the pod routes survive reboots
+
 *Coming next.*
 
 ---
@@ -909,6 +1159,7 @@ curl --cacert ca.crt https://server.kubernetes.local:6443/version
 | Commands after `exit` failed with "Permission denied" | They ran on gelkube, not the jumpbox | Check the prompt before pasting |
 | `mv: cannot stat 'kube-apiserver'` and CA files moved on the jumpbox | Server commands were pasted on the jumpbox | Moved the files back from `/var/lib/kubernetes/`, then reran on the server |
 | A command after `exit` never ran | Pasted text gets swallowed while the SSH session closes | Run `exit` alone, then paste |
+| NodePort via node-0 timed out, but node-1 worked | `net.ipv4.ip_forward = 0` on node-0. The CNI only turns it on when a pod is created on that node. | `net.ipv4.ip_forward = 1` in `/etc/sysctl.d/kubernetes.conf` on every node |
 
 ## What I learned
 
@@ -916,4 +1167,7 @@ curl --cacert ca.crt https://server.kubernetes.local:6443/version
 - Copy-on-write disks let four VMs share one 335 MB base image.
 - **A clue isn't the same as proof.** The correct hostname made it look like cloud-init worked, but the name came from somewhere else.
 - When you can't log in, read the logs from outside the machine (libguestfs).
+- Every component authenticates with a certificate, and Kubernetes reads the **CN as the username** and the **O as the group**.
+- **Debugging is guess-and-test:** compare what works with what doesn't, form a theory, then check it with one command.
+- Linux won't pass along other machines' traffic unless `ip_forward` is on. Kubernetes networking depends on it.
 - <!-- my own notes -->
