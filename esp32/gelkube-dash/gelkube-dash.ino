@@ -59,9 +59,7 @@ LGFX tft;
 LGFX_Sprite spr(&tft);              // off-screen canvas for everything below the header
 
 // ===================== Colors =====================
-constexpr uint16_t C(uint8_t r, uint8_t g, uint8_t b) {
-  return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
-}
+#define C(r, g, b) ((uint16_t)((((r) & 0xF8) << 8) | (((g) & 0xFC) << 3) | ((b) >> 3)))
 const uint16_t BG      = C(26, 23, 39);
 const uint16_t HEAD    = C(40, 34, 60);
 const uint16_t PANEL   = C(48, 42, 74);
@@ -104,6 +102,9 @@ struct Status {
   uint32_t lastOkMs = 0;
   int fails = 0;
 };
+// Arduino IDE writes its own function declarations above the first function in the file,
+// so every type used in a function's parameters is defined up here, before any function.
+enum Screen { SLEEP, MAP, HEALTH };
 Status shared;
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
@@ -220,7 +221,6 @@ void fetchTask(void *) {
 }
 
 // ===================== Screens and input =====================
-enum Screen { SLEEP, MAP, HEALTH };
 Screen screen = SLEEP;
 const uint32_t IDLE_MS = 120000;     // back to Sleep after 2 minutes without a tap
 uint32_t lastInput = 0;
@@ -317,17 +317,21 @@ void moveAndDrawDots(uint32_t now) {
 }
 
 // ===================== Drawing helpers =====================
-void label(const char *s, int x, int y, uint16_t col, const lgfx::IFont *font, textdatum_t datum = textdatum_t::top_left) {
+void labelAt(const char *s, int x, int y, uint16_t col, const lgfx::IFont *font, textdatum_t datum) {
   spr.setFont(font);
   spr.setTextColor(col);
   spr.setTextDatum(datum);
   spr.drawString(s, x, y);
 }
 
+void label(const char *s, int x, int y, uint16_t col, const lgfx::IFont *font) {
+  labelAt(s, x, y, col, font, textdatum_t::top_left);
+}
+
 void chip(int x, int y, int w, const char *s, bool on) {
   spr.fillRoundRect(x, y, w, CHIP_H, 4, on ? EMBER : CHIP);
   spr.drawRoundRect(x, y, w, CHIP_H, 4, on ? EMBER : EDGE);
-  label(s, x + w / 2, y + CHIP_H / 2, on ? BG : TEXT, &fonts::Font0, textdatum_t::middle_center);
+  labelAt(s, x + w / 2, y + CHIP_H / 2, on ? BG : TEXT, &fonts::Font0, textdatum_t::middle_center);
 }
 
 void box(int x, int y, int w, int h, bool running) {
@@ -404,8 +408,8 @@ void drawSleep(const Status &st, uint32_t now) {
   else if (!st.live) snprintf(line, sizeof line, "can't reach gelkube");
   else snprintf(line, sizeof line, "%d/2 nodes  |  %d pod%s  |  %.0f C",
                 (int)st.nodeReady[0] + (int)st.nodeReady[1], st.podsRunning, st.podsRunning == 1 ? "" : "s", st.temp);
-  label(line, SW / 2, 186, st.live ? TEXT : WARN, &fonts::Font2, textdatum_t::top_center);
-  label("tap to open", SW / 2, 203, MUTED, &fonts::Font0, textdatum_t::top_center);
+  labelAt(line, SW / 2, 186, st.live ? TEXT : WARN, &fonts::Font2, textdatum_t::top_center);
+  labelAt("tap to open", SW / 2, 203, MUTED, &fonts::Font0, textdatum_t::top_center);
 }
 
 void drawMap(const Status &st, uint32_t now) {
@@ -433,7 +437,7 @@ void drawMap(const Status &st, uint32_t now) {
   box(112, 10, 198, 74, st.vmRunning[1]);
   label("server", 118, 14, st.vmRunning[1] ? TEXT : MUTED, &fonts::Font2);
   label(".11", 166, 19, MUTED, &fonts::Font0);
-  label(st.version, 302, 19, MUTED, &fonts::Font0, textdatum_t::top_right);
+  labelAt(st.version, 302, 19, MUTED, &fonts::Font0, textdatum_t::top_right);
   chip(120, CHIP_Y, 44, "api", lit(F_API, now) || (st.live && !st.apiOk && (now / 400) % 2));
   chip(168, CHIP_Y, 42, "etcd", lit(F_ETCD, now));
   chip(214, CHIP_Y, 44, "sched", lit(F_SCHED, now));
@@ -447,7 +451,7 @@ void drawMap(const Status &st, uint32_t now) {
     label(i == 0 ? "node-0" : "node-1", x + 6, 132, on ? TEXT : MUTED, &fonts::Font2);
     bool ready = st.nodeReady[i];
     spr.fillRoundRect(x + 86, 133, 54, 14, 7, !st.live ? CHIP : ready ? GOOD : BAD);
-    label(!st.live ? "?" : ready ? "Ready" : "NotReady", x + 113, 140, BG, &fonts::Font0, textdatum_t::middle_center);
+    labelAt(!st.live ? "?" : ready ? "Ready" : "NotReady", x + 113, 140, BG, &fonts::Font0, textdatum_t::middle_center);
     chip(x + 6, 152, 60, "kubelet", lit(i == 0 ? F_KL0 : F_KL1, now));
     char p[16];
     snprintf(p, sizeof p, "pods %d", st.nodePods[i]);
@@ -456,14 +460,14 @@ void drawMap(const Status &st, uint32_t now) {
       float bob = sinf(t * 3 + k + i) * 1.5f;
       spr.fillRoundRect(x + 6 + k * 13, 180 + bob, 10, 10, 2, PODC);
     }
-    if (!on) label("VM off", x + 73, 185, MUTED, &fonts::Font0, textdatum_t::middle_center);
+    if (!on) labelAt("VM off", x + 73, 185, MUTED, &fonts::Font0, textdatum_t::middle_center);
   }
 
   moveAndDrawDots(now);
 
   if (!st.live) {
     spr.fillRoundRect(70, 94, 180, 24, 8, BAD);
-    label(WiFi.status() == WL_CONNECTED ? "can't reach gelkube" : "joining Wi-Fi...", 160, 106, TEXT, &fonts::Font2, textdatum_t::middle_center);
+    labelAt(WiFi.status() == WL_CONNECTED ? "can't reach gelkube" : "joining Wi-Fi...", 160, 106, TEXT, &fonts::Font2, textdatum_t::middle_center);
   }
 }
 
@@ -471,7 +475,7 @@ void tile(int x, int y, const char *name, const char *value, uint16_t col, const
   spr.fillRoundRect(x, y, 152, 42, 7, PANEL);
   label(name, x + 8, y + 5, MUTED, &fonts::Font0);
   label(value, x + 8, y + 17, col, &fonts::FreeSansBold12pt7b);
-  if (extra && *extra) label(extra, x + 144, y + 5, MUTED, &fonts::Font0, textdatum_t::top_right);
+  if (extra && *extra) labelAt(extra, x + 144, y + 5, MUTED, &fonts::Font0, textdatum_t::top_right);
   if (bar >= 0) {
     spr.fillRoundRect(x + 84, y + 26, 60, 6, 3, CHIP);
     spr.fillRoundRect(x + 84, y + 26, (int)(60 * fminf(bar, 1.0f)), 6, 3, col);
@@ -507,7 +511,7 @@ void drawHealth(const Status &st, uint32_t now) {
   else snprintf(f, sizeof f, "gelkube up %luh %lum  |  disk %.0f%%  |  updated %lus ago  |  %ddBm",
                 (unsigned long)(st.uptime / 3600), (unsigned long)(st.uptime / 60 % 60), st.diskPct,
                 (unsigned long)((now - st.lastOkMs) / 1000), (int)WiFi.RSSI());
-  label(f, SW / 2, 196, st.live ? MUTED : WARN, &fonts::Font0, textdatum_t::top_center);
+  labelAt(f, SW / 2, 196, st.live ? MUTED : WARN, &fonts::Font0, textdatum_t::top_center);
 }
 
 void drawHeader(const Status &st) {
