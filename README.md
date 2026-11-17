@@ -50,7 +50,7 @@ I'm documenting every step so I can look back on what I did, and so others can f
 | Device | Specs | Role |
 |---|---|---|
 | Lenovo Yoga laptop (Intel Raptor Lake) | 16GB RAM, 1TB Samsung NVMe SSD | The whole lab: host for VMs and the cluster |
-| ESP32 board (KubeCon swag) | Built-in screen, WiFi | Lab status display |
+| ESP32-2432S028 "Cheap Yellow Display" (KubeCon swag) | 2.8" 320×240 touchscreen, Wi-Fi | Lab status display |
 
 ## Technologies
 
@@ -112,7 +112,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 ### Hardware projects
 | Tech | What it does here | Phase | Status |
 |---|---|---|---|
-| ESP32 + [ESPHome](https://esphome.io/) or Arduino | Status screen for the lab | 6 | ⏳ |
+| ESP32-2432S028 + [LovyanGFX](https://github.com/lovyan03/LovyanGFX) | [gelcube-buddy](esp32/gelcube-buddy/): animated mascot now, live lab status later | 6 | 🚧 |
 
 ## Roadmap
 
