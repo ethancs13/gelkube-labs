@@ -62,7 +62,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 | [Ubuntu Server 26.04.1 LTS](https://ubuntu.com/server) | Host operating system | 0 | ✅ |
 | [OpenSSH](https://www.openssh.com/) | Remote access to the server | 0 | ✅ |
 | [Tailscale](https://tailscale.com/) | Private VPN mesh, so I can reach the lab from anywhere | 0 | ✅ |
-| [KVM / libvirt](https://libvirt.org/) | Runs the VMs for Kubernetes the Hard Way | 1 | ⏳ |
+| [KVM / libvirt](https://libvirt.org/) | Runs the VMs for Kubernetes the Hard Way | 1 | ✅ |
 
 ### Kubernetes the Hard Way (learning cluster)
 | Tech | What it does here | Phase | Status |
@@ -117,7 +117,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 ## Roadmap
 
 - [x] **Phase 0: Base server.** Ubuntu Server, SSH keys and Tailscale ✅
-- [ ] **Phase 1: Kubernetes the Hard Way.** Build a cluster by hand on 4 VMs, then break and fix the networking
+- [ ] **Phase 1: Kubernetes the Hard Way.** Build a cluster by hand on 4 VMs, then break and fix the networking (🚧 VMs created)
 - [ ] **Phase 2: Main cluster.** k3s, Argo CD and Helm, with everything deployed from this repo
 - [ ] **Phase 3: Services.** Tailscale operator, AdGuard Home, Sealed Secrets, Vaultwarden and backups
 - [ ] **Phase 4: Observability.** Prometheus, Grafana, OpenTelemetry and Uptime Kuma
@@ -131,6 +131,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 |---|---|---|
 | 01 | [Planning: goals, name and technology choices](docs/01-planning.md) | ✅ Done |
 | 02 | [Installing Ubuntu Server on the laptop](docs/02-installing-ubuntu.md) | ✅ Done |
+| 03 | [Kubernetes the Hard Way](docs/03-kubernetes-the-hard-way.md) | 🚧 In progress |
 | — | [KubeCon NA 2026 notes](docs/kubecon-2026-notes.md) | 📓 Reference |
 
 ## How I document
