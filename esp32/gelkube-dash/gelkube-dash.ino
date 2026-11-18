@@ -3,7 +3,7 @@
 // Libraries: LovyanGFX (by lovyan03), ArduinoJson (by Benoit Blanchon, v7)
 //
 // Screens
-//   Sleep  : the gelatinous cube mascot. Its face shows the cluster's mood. Tap to wake.
+//   Sleep  : the gelkube logo, gently bobbing, with a one-line summary. Tap to wake.
 //   Map    : gelkube, its 4 VMs and the cluster parts. Dots travel along the paths
 //            as real API requests and network traffic happen.
 //   Health : the numbers: API server, nodes, pods, VMs, request rate, temperature...
@@ -19,6 +19,7 @@
 #include <LovyanGFX.hpp>
 #include <math.h>
 #include "secrets.h"
+#include "logo.h"                  // the repo logo as a picture (made from assets/logo.png)
 
 // ===================== Screen setup (ESP32-2432S028) =====================
 // This is the "2USB" version of the board (it has both USB-C and micro-USB). It uses an
@@ -78,14 +79,7 @@ const uint16_t EMBER   = C(255, 150, 60);
 const uint16_t NET     = C(110, 220, 255);
 const uint16_t WRITE   = C(190, 150, 255);
 const uint16_t PODC    = C(150, 110, 240);
-// cube
-const uint16_t SL_TOP  = C(168, 255, 160);
-const uint16_t SL_L    = C(84, 222, 124);
-const uint16_t SL_R    = C(46, 178, 96);
 const uint16_t SL_EDGE = C(14, 70, 38);
-const uint16_t PUPIL   = C(20, 20, 32);
-const uint16_t BLUSH   = C(255, 150, 170);
-const uint16_t SHADOW  = C(14, 12, 22);
 
 // ===================== Live data =====================
 struct Status {
@@ -341,77 +335,39 @@ void box(int x, int y, int w, int h, bool running) {
   spr.drawRoundRect(x, y, w, h, 7, running ? EDGE : MUTED);
 }
 
-// ===================== The cube =====================
-void drawCube(const Status &st, uint32_t now) {
-  static uint32_t nextBlink = 0, blinkUntil = 0;
-  if (now > nextBlink) { blinkUntil = now + 140; nextBlink = now + 2000 + random(0, 3000); }
-  int mood = !st.live ? 2 : (allGood(st) ? 0 : 1);   // 0 happy, 1 worried, 2 can't see gelkube
-
-  float b = fabsf(sinf(t * (mood == 0 ? 2.2f : 1.2f)));
-  float squash = 1.0f - b;
-  float hw = 58 + squash * 6, hh = 30, eh = 66 - squash * 8;
-  float cx = SW / 2, floorY = 168;
-  float ty = floorY - (2 * hh + eh) - b * (mood == 0 ? 14 : 5);
-
-  spr.fillEllipse(SW / 2, floorY + 4, 46 + squash * 14, 7, SHADOW);
-  float Tx = cx, Ty = ty, Rx = cx + hw, Ry = ty + hh, Cx = cx, Cy = ty + 2 * hh, Lx = cx - hw, Ly = ty + hh;
-  float R2y = Ry + eh, C2y = Cy + eh, L2y = Ly + eh;
-
-  spr.fillTriangle(Lx, Ly, Cx, Cy, Cx, C2y, SL_L);
-  spr.fillTriangle(Lx, Ly, Cx, C2y, Lx, L2y, SL_L);
-  spr.fillTriangle(Cx, Cy, Rx, Ry, Rx, R2y, SL_R);
-  spr.fillTriangle(Cx, Cy, Rx, R2y, Cx, C2y, SL_R);
-  spr.fillTriangle(Tx, Ty, Rx, Ry, Cx, Cy, SL_TOP);
-  spr.fillTriangle(Tx, Ty, Cx, Cy, Lx, Ly, SL_TOP);
-
-  // one little pod per running pod, floating inside
-  for (int i = 0; i < min(st.podsRunning, 4); i++) {
-    float px = Cx + 16 + i * 10, py = Cy + 18 + i * 9 + sinf(t * 3 + i) * 3;
-    spr.fillRoundRect(px, py, 10, 10, 2, PODC);
-    spr.drawRoundRect(px, py, 10, 10, 2, SL_EDGE);
-  }
-  // bubbles
-  for (int i = 0; i < 4; i++) {
-    float phase = fmodf(t * 0.6f + i * 0.25f, 1.0f);
-    spr.drawCircle(cx - 30 + i * 20, C2y - 10 - phase * (C2y - Ty - 24), 2 + (i % 2), TFT_WHITE);
-  }
-
-  float pts[9][4] = {{Tx, Ty, Rx, Ry}, {Rx, Ry, Cx, Cy}, {Cx, Cy, Lx, Ly}, {Lx, Ly, Tx, Ty}, {Lx, Ly, Lx, L2y},
-                     {Rx, Ry, Rx, R2y}, {Cx, Cy, Cx, C2y}, {Lx, L2y, Cx, C2y}, {Cx, C2y, Rx, R2y}};
-  for (auto &p : pts) spr.drawWideLine(p[0], p[1], p[2], p[3], 1.2f, SL_EDGE);
-  spr.drawWideLine(Tx - 30, Ty + 14, Tx - 12, Ty + 5, 2.0f, TFT_WHITE);
-
-  // face
-  float fx = (Lx + Cx) / 2, fy = (Ly + C2y) / 2 + 2;
-  bool closed = (mood == 2) || now < blinkUntil;
-  for (int s = -1; s <= 1; s += 2) {
-    float ex = fx + s * 13;
-    if (closed) spr.drawWideLine(ex - 6, fy, ex + 6, fy, 1.5f, PUPIL);
-    else {
-      spr.fillEllipse(ex, fy, 7, 9, TFT_WHITE);
-      spr.fillCircle(ex + 2, fy + 2, 4, PUPIL);
-      spr.fillCircle(ex + 3, fy, 1, TFT_WHITE);
-    }
-    if (mood == 1) spr.drawWideLine(ex - 6, fy - 14 - s * 2, ex + 6, fy - 14 + s * 2, 1.4f, PUPIL);  // worried brows
-    spr.fillEllipse(ex + s * 4, fy + 14, 5, 3, BLUSH);
-  }
-  if (mood == 1) spr.fillArc(fx, fy + 20, 8, 6, 205, 335, PUPIL);   // frown
-  else spr.fillArc(fx, fy + 10, 8, 6, 25, 155, PUPIL);              // smile
-  if (mood == 1) { spr.fillCircle(Rx - 14, Ry + 6, 4, NET); spr.fillTriangle(Rx - 18, Ry + 5, Rx - 10, Ry + 5, Rx - 14, Ry - 4, NET); }
-  if (mood == 2) label("?", Tx + 34, Ty - 18, TEXT, &fonts::FreeSansBold12pt7b);
-}
-
 // ===================== Screens =====================
-void drawSleep(const Status &st, uint32_t now) {
-  spr.fillScreen(BG);
-  drawCube(st, now);
+// The Sleep screen draws straight to the screen (not the 8-bit canvas) so the logo keeps
+// its full colors. The picture has background rows above and below, so moving it a few
+// pixels paints over its old spot with no flicker.
+void drawSleep(const Status &st, uint32_t now, bool fresh) {
+  static int lastY = -1000;
+  static char lastLine[64] = "";
+  if (fresh) {
+    tft.fillRect(0, 28, SW, 212, BG);
+    lastY = -1000; lastLine[0] = 0;
+    tft.setFont(&fonts::Font0);
+    tft.setTextColor(MUTED, BG);
+    tft.setTextDatum(textdatum_t::top_center);
+    tft.drawString("tap to open", SW / 2, 230);
+  }
+  int y = 34 + (int)lroundf(3 + 3 * sinf(t * 1.6f));          // bob between 34 and 40
+  if (y != lastY) {
+    tft.pushImage((SW - LOGO_W) / 2, y, LOGO_W, LOGO_H, (const lgfx::rgb565_t *)LOGO);
+    lastY = y;
+  }
   char line[64];
   if (WiFi.status() != WL_CONNECTED) snprintf(line, sizeof line, "joining Wi-Fi...");
   else if (!st.live) snprintf(line, sizeof line, "can't reach gelkube");
   else snprintf(line, sizeof line, "%d/2 nodes  |  %d pod%s  |  %.0f C",
                 (int)st.nodeReady[0] + (int)st.nodeReady[1], st.podsRunning, st.podsRunning == 1 ? "" : "s", st.temp);
-  labelAt(line, SW / 2, 186, st.live ? TEXT : WARN, &fonts::Font2, textdatum_t::top_center);
-  labelAt("tap to open", SW / 2, 203, MUTED, &fonts::Font0, textdatum_t::top_center);
+  if (strcmp(line, lastLine)) {
+    tft.fillRect(0, 212, SW, 16, BG);
+    tft.setFont(&fonts::Font2);
+    tft.setTextColor(st.live ? TEXT : WARN, BG);
+    tft.setTextDatum(textdatum_t::top_center);
+    tft.drawString(line, SW / 2, 212);
+    strlcpy(lastLine, line, sizeof lastLine);
+  }
 }
 
 void drawMap(const Status &st, uint32_t now) {
@@ -546,8 +502,10 @@ void drawHeader(const Status &st) {
   tft.drawString("zzz", 289, 14);
 }
 
+bool sleepFresh = true;              // Sleep screen needs a full redraw
+
 void go(Screen s) {
-  if (s != screen) { screen = s; headerDirty = true; }
+  if (s != screen) { screen = s; headerDirty = true; if (s == SLEEP) sleepFresh = true; }
 }
 
 void onTap(int x, int y) {
@@ -628,10 +586,12 @@ void loop() {
     }
   }
 
-  if (screen == SLEEP) drawSleep(st, now);
-  else if (screen == MAP) drawMap(st, now);
-  else drawHealth(st, now);
-  spr.pushSprite(0, 28);
+  if (screen == SLEEP) { drawSleep(st, now, sleepFresh); sleepFresh = false; }
+  else {
+    if (screen == MAP) drawMap(st, now);
+    else drawHealth(st, now);
+    spr.pushSprite(0, 28);
+  }
 
   // LED: green breathing = all good, red pulse = needs a look, blue = offline
   int glow = 255 - (int)(18 + 18 * sinf(t * 1.5f));
