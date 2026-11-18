@@ -21,8 +21,10 @@
 #include "secrets.h"
 
 // ===================== Screen setup (ESP32-2432S028) =====================
+// This is the "2USB" version of the board (it has both USB-C and micro-USB). It uses an
+// ST7789 screen chip. The older single-USB version uses an ILI9341: swap the line below.
 class LGFX : public lgfx::LGFX_Device {
-  lgfx::Panel_ILI9341 _panel;     // garbled picture? try lgfx::Panel_ST7789
+  lgfx::Panel_ST7789  _panel;     // single-USB board? use lgfx::Panel_ILI9341
   lgfx::Bus_SPI       _bus;
   lgfx::Light_PWM     _light;
   lgfx::Touch_XPT2046 _touch;
@@ -30,7 +32,7 @@ public:
   LGFX() {
     { auto cfg = _bus.config();
       cfg.spi_host = SPI2_HOST; cfg.spi_mode = 0;
-      cfg.freq_write = 40000000; cfg.freq_read = 16000000;
+      cfg.freq_write = 27000000; cfg.freq_read = 16000000;
       cfg.pin_sclk = 14; cfg.pin_mosi = 13; cfg.pin_miso = 12; cfg.pin_dc = 2;
       _bus.config(cfg); _panel.setBus(&_bus); }
     { auto cfg = _panel.config();
