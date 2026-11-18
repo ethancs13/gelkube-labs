@@ -9,11 +9,14 @@
 //   Health : the numbers: API server, nodes, pods, VMs, request rate, temperature...
 // Tap the tabs at the top to switch. "zzz" (or 2 minutes of no taps) goes back to Sleep.
 // The BOOT button on the board also cycles through the screens.
+// Touch calibration: on first boot it asks you to tap 4 corner arrows and saves the result.
+// To redo it any time, hold the BOOT button for 3 seconds.
 //
 // Data comes every 3 s from http://<gelkube>:8787/status (host/status-exporter in the repo).
 // Copy secrets.example.h to secrets.h and fill in your Wi-Fi and gelkube's address.
 
 #include <WiFi.h>
+#include <Preferences.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <LovyanGFX.hpp>
@@ -51,7 +54,7 @@ public:
       cfg.spi_host = SPI3_HOST; cfg.freq = 1000000;
       cfg.pin_sclk = 25; cfg.pin_mosi = 32; cfg.pin_miso = 39; cfg.pin_cs = 33; cfg.pin_int = 36;
       cfg.x_min = 300; cfg.x_max = 3900; cfg.y_min = 200; cfg.y_max = 3700;
-      cfg.offset_rotation = 0;       // tabs respond in the wrong place? try 2
+      cfg.offset_rotation = 0;       // the on-screen calibration fixes direction and scale
       cfg.bus_shared = false;
       _touch.config(cfg); _panel.setTouch(&_touch); }
     setPanel(&_panel);
@@ -521,18 +524,43 @@ void onTap(int x, int y) {
 const int LED_R = 4, LED_G = 16, LED_B = 17;   // on when LOW
 const int BOOT_BTN = 0;
 
+// Every touch panel is glued on a little differently, so instead of guessing which way its
+// numbers run, we ask once: tap the arrow in each corner. The answer is saved in the
+// ESP32's own storage (NVS) and reused on every boot.
+void setupTouch(bool force) {
+  Preferences prefs;
+  prefs.begin("gelkube", false);
+  uint16_t cal[8];
+  bool have = prefs.getBytes("touchcal", cal, sizeof cal) == sizeof cal;
+  if (!have || force) {
+    tft.fillScreen(BG);
+    tft.setFont(&fonts::Font2);
+    tft.setTextColor(TEXT, BG);
+    tft.setTextDatum(textdatum_t::middle_center);
+    tft.drawString("Touch calibration", SW / 2, 100);
+    tft.setTextColor(MUTED, BG);
+    tft.drawString("tap the tip of each arrow", SW / 2, 124);
+    tft.calibrateTouch(cal, EMBER, BG, 16);
+    prefs.putBytes("touchcal", cal, sizeof cal);
+    tft.fillScreen(BG);
+  }
+  tft.setTouchCalibrate(cal);
+  prefs.end();
+}
+
 void setup() {
+  pinMode(BOOT_BTN, INPUT_PULLUP);
   tft.init();
   tft.setRotation(1);                         // landscape 320x240
   tft.setBrightness(200);
   tft.fillScreen(BG);
+  setupTouch(false);
 
   spr.setColorDepth(8);                       // 8-bit keeps the canvas small enough to sit next to Wi-Fi
   spr.createSprite(SW, SH);
 
   pinMode(LED_R, OUTPUT); pinMode(LED_G, OUTPUT); pinMode(LED_B, OUTPUT);
   digitalWrite(LED_R, HIGH); digitalWrite(LED_G, HIGH); digitalWrite(LED_B, HIGH);
-  pinMode(BOOT_BTN, INPUT_PULLUP);
   randomSeed(micros());
 
   WiFi.mode(WIFI_STA);
@@ -561,7 +589,15 @@ void loop() {
   // BOOT button cycles Sleep -> Map -> Health
   static bool btnWas = false;
   bool btn = digitalRead(BOOT_BTN) == LOW;
-  if (btn && !btnWas) { lastInput = now; go(screen == SLEEP ? MAP : screen == MAP ? HEALTH : SLEEP); }
+  static uint32_t btnDownAt = 0;
+  if (btn && !btnWas) { lastInput = now; btnDownAt = now; go(screen == SLEEP ? MAP : screen == MAP ? HEALTH : SLEEP); }
+  if (btn && btnWas && now - btnDownAt > 3000) {   // held 3 s: redo touch calibration
+    while (digitalRead(BOOT_BTN) == LOW) delay(10);
+    setupTouch(true);
+    tft.fillScreen(BG);
+    headerDirty = true; sleepFresh = true;
+    btn = false;
+  }
   btnWas = btn;
 
   if (screen != SLEEP && now - lastInput > IDLE_MS) go(SLEEP);
