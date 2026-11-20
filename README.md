@@ -63,6 +63,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 | [OpenSSH](https://www.openssh.com/) | Remote access to the server | 0 | ✅ |
 | [Tailscale](https://tailscale.com/) | Private VPN mesh, so I can reach the lab from anywhere | 0 | ✅ |
 | [KVM / libvirt](https://libvirt.org/) | Runs the VMs for Kubernetes the Hard Way | 1 | ✅ |
+| Wired Ethernet (USB adapter) | Moves gelkube off Wi-Fi so streaming and the cluster are steadier | 2 | ⏳ |
 
 ### Kubernetes the Hard Way (learning cluster)
 | Tech | What it does here | Phase | Status |
@@ -87,6 +88,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 ### Services
 | Tech | What it does here | Phase | Status |
 |---|---|---|---|
+| [Jellyfin](https://jellyfin.org/) | My own media server (movies, shows, music), with Intel Quick Sync for transcoding and watching from anywhere over Tailscale. The first real app deployed with Argo CD | 2 | ⏳ |
 | [Tailscale Kubernetes operator](https://tailscale.com/kb/1236/kubernetes-operator) | Gives apps private HTTPS URLs on my tailnet | 3 | ⏳ |
 | [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome) | Network-wide ad blocking, used as my tailnet's DNS | 3 | ⏳ |
 | [Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets) | Lets encrypted secrets live safely in Git | 3 | ⏳ |
@@ -112,14 +114,14 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 ### Hardware projects
 | Tech | What it does here | Phase | Status |
 |---|---|---|---|
-| ESP32-2432S028 + [LovyanGFX](https://github.com/lovyan03/LovyanGFX) | [gelkube-dash](esp32/gelkube-dash/): cube mascot, live map with traffic dots, health stats ([gelcube-buddy](esp32/gelcube-buddy/) is the mascot on its own) | 6 | 🚧 |
+| ESP32-2432S028 + [LovyanGFX](https://github.com/lovyan03/LovyanGFX) | [gelkube-dash](esp32/gelkube-dash/): logo sleep screen, live map with traffic dots, health stats ([gelcube-buddy](esp32/gelcube-buddy/) is the mascot on its own) | 6 | 🚧 |
 | [gelkube-status](host/status-exporter/) (Python) | Serves the lab's health as JSON for the ESP32 | 6 | 🚧 |
 
 ## Roadmap
 
 - [x] **Phase 0: Base server.** Ubuntu Server, SSH keys and Tailscale ✅
 - [ ] **Phase 1: Kubernetes the Hard Way.** Build a cluster by hand on 4 VMs, then break and fix the networking (✅ cluster built, smoke tests pass, survives reboot · 🚧 break-it exercises)
-- [ ] **Phase 2: Main cluster.** k3s, Argo CD and Helm, with everything deployed from this repo
+- [ ] **Phase 2: Main cluster.** Wired Ethernet, then k3s, Argo CD and Helm, with everything deployed from this repo. First app: **Jellyfin** media server (persistent storage, GPU passthrough for transcoding)
 - [ ] **Phase 3: Services.** Tailscale operator, AdGuard Home, Sealed Secrets, Vaultwarden and backups
 - [ ] **Phase 4: Observability.** Prometheus, Grafana, OpenTelemetry and Uptime Kuma
 - [ ] **Phase 5: AI agents.** kagent, Agent Sandbox and OpenShell
