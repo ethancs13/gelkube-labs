@@ -1,0 +1,32 @@
+# Settings for the official Jellyfin Helm chart (https://github.com/jellyfin/jellyfin-helm).
+# Only what differs from the chart's defaults is listed here.
+
+service:
+  # LoadBalancer = k3s's ServiceLB opens port 8096 on gelkube itself,
+  # so Jellyfin is at http://gelkube:8096 (Tailscale) and http://192.168.0.110:8096 (home Wi-Fi).
+  type: LoadBalancer
+  port: 8096
+
+persistence:
+  config:
+    # Jellyfin's settings, users and library database. k3s's local-path provisioner
+    # makes a folder for it under /var/lib/rancher/k3s/storage on gelkube.
+    enabled: true
+    type: pvc
+    size: 5Gi
+  media:
+    # The movies/shows/music folders, straight from gelkube's disk, so I can copy files
+    # in with scp. The folder must exist before Jellyfin starts (see docs/07).
+    enabled: true
+    type: hostPath
+    hostPath: /srv/media
+  cache:
+    # Transcoding scratch space; fine to lose on restart.
+    enabled: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 3Gi

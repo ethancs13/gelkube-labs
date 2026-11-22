@@ -7,9 +7,11 @@ k8s/
 ├── argocd/
 │   ├── root.yaml        the "app of apps": watches argocd/apps/ (applied by hand, once)
 │   └── apps/            one Argo CD Application per app
-│       └── hello-gelkube.yaml
+│       ├── hello-gelkube.yaml
+│       └── jellyfin.yaml
 └── apps/                the apps themselves (plain manifests or Helm values)
-    └── hello-gelkube/
+    ├── hello-gelkube/   plain manifests
+    └── jellyfin/        values.yaml for the official Helm chart
 ```
 
 **Add an app:** put its manifests in `apps/<name>/`, add `argocd/apps/<name>.yaml` pointing at them, push. Argo CD does the rest.
