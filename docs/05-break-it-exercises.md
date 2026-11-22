@@ -1,7 +1,7 @@
 # 05: Break-it exercises
 
 **Date started:** 2026-11-21
-**Status:** 🚧 In progress
+**Status:** ✅ Done
 **Phase:** 1
 
 > **How to read this doc:** every step has the same four parts: **Why**, **Commands**, **What it does** and **What happened**.
@@ -21,7 +21,7 @@ All commands run on the **jumpbox** (`ssh root@192.168.122.10` from gelkube) unl
 | 3 | Stop **kube-controller-manager** | Delete a pod and nobody replaces it | ✅ |
 | 4 | Stop the **kubelet** on node-1 | node-1 goes `NotReady` after ~40–50 s, its pods are only moved minutes later | ✅ |
 | ★ | Bonus: add a **spread rule** and make it fight back | A pod that would break the rule stays `Pending` | ✅ |
-| 5 | Delete a **pod route** on node-0 | Pods on node-0 can't reach pods on node-1 | ⏳ |
+| 5 | Delete a **pod route** on node-0 | Pods on node-0 can't reach pods on node-1 | ✅ |
 
 ### Key ideas, explained like you're 5
 
@@ -464,3 +464,95 @@ sleep 10; kubectl get pods -o wide
 - `topologySpreadConstraints` controls *where* new pods go. With `DoNotSchedule` it's a hard rule: a pod waits rather than break it.
 - `kubectl describe pod` → **Events** is the first place to look when a pod is Pending. The scheduler gives a reason for every node.
 - `cordon` / `uncordon` is how you close a node to new pods, for example before maintenance. (`kubectl drain` also moves the existing pods off.)
+
+---
+
+## Exercise 5: Delete a pod route
+
+**Why:** each node gives its pods addresses from its own range (node-0: `10.200.0.x`, node-1: `10.200.1.x`). For node-0 to reach a pod on node-1, it needs a route: "for `10.200.1.x`, go through node-1 (`192.168.122.21`)". I added these routes by hand in [03, Step 11](03-kubernetes-the-hard-way.md), and `pod-routes.service` re-adds them on every boot. Deleting one shows what that route actually does.
+
+### 5.1 Look at the routes and test them
+
+**Commands:**
+```bash
+ssh root@node-0 ip route | grep 10.200
+ssh root@node-0 curl -s -m 2 -o /dev/null -w '%{http_code}\n' http://10.200.1.12
+```
+
+**What it does:**
+- `ip route | grep 10.200`: shows node-0's routes for pod addresses
+- the `curl` line: from node-0, asks the node-1 pod at `10.200.1.12` for a page and prints only the HTTP status code (`-m 2` gives up after 2 seconds)
+
+**What happened:**
+```
+10.200.0.0/24 dev cni0 proto kernel scope link src 10.200.0.1
+10.200.1.0/24 via 192.168.122.21 dev enp1s0
+200
+```
+- `10.200.0.0/24 dev cni0`: node-0's *own* pods are on its local bridge, `cni0`
+- `10.200.1.0/24 via 192.168.122.21`: the route to node-1's pods
+
+(Through ssh the `\n` lost its backslash and printed as a literal `n`, so the output looked like `200n`. Harmless.)
+
+### 5.2 Break it
+
+**Commands:**
+```bash
+ssh root@node-0 ip route del 10.200.1.0/24
+```
+
+**What it does:** deletes node-0's route to node-1's pods.
+
+### 5.3 Test again
+
+**Commands:**
+```bash
+ssh root@node-0 curl -s -m 2 -o /dev/null -w '%{http_code}\n' http://10.200.1.12
+for i in $(seq 10); do curl -s -m 2 -o /dev/null -w '%{http_code} ' http://node-0:32291; done; echo
+```
+
+**What it does:**
+- the direct request to the node-1 pod again
+- asks nginx through node-0's NodePort 10 times in a row
+
+**What happened:**
+```
+000
+000 200 000 200 200 000 200 000 200 200
+```
+- **`000` = no answer.** node-0 had no idea how to reach `10.200.1.x`.
+- **6 of 10 worked, 4 failed.** For each request the Service picked a random nginx pod: a node-0 pod worked, a node-1 pod was lost. A route problem looks like a **flaky** site, not a down one, which makes it much harder to track down.
+
+### 5.4 Fix it
+
+**Commands:**
+```bash
+ssh root@node-0 ip route add 10.200.1.0/24 via 192.168.122.21
+for i in $(seq 10); do curl -s -m 2 -o /dev/null -w '%{http_code} ' http://node-0:32291; done; echo
+```
+
+**What happened:**
+```
+200 200 200 200 200 200 200 200 200 200
+```
+10 out of 10. (A reboot would also have fixed it, because `pod-routes.service` adds the routes on boot.)
+
+### What I learned
+
+- Cross-node pod traffic depends on **routes**. In my cluster I made them by hand; in real clusters a CNI plugin (Flannel, Calico, Cilium) creates and maintains them, often with tunnels instead of plain routes.
+- A broken route breaks only *some* requests: the ones that happen to land on the other node. **Intermittent** failures are often a network path problem.
+- `curl -w '%{http_code}'` in a loop is a quick way to measure how often something fails.
+
+---
+
+## Summary
+
+| # | I broke | What still worked | What stopped |
+|---|---|---|---|
+| 1 | etcd | Running apps | All changes, kubectl, the ESP32's view of the cluster |
+| 2 | scheduler | Running apps, creating pods | Placing new pods (Pending) |
+| 3 | controller-manager | Running apps | Replacing deleted pods, status reports (went stale) |
+| 4 | node-1's kubelet | node-1's apps (as "zombies") | Seeing node-1; pods replaced after 5 min, never moved back |
+| 5 | a pod route | Pods on the same node | Traffic to the other node's pods (about half of all requests) |
+
+**The big lesson:** Kubernetes is a team of small parts that each do one job and all go through the API server. When one stops, only its job stops, and the running apps are surprisingly hard to kill.

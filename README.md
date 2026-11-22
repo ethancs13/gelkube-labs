@@ -120,7 +120,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 ## Roadmap
 
 - [x] **Phase 0: Base server.** Ubuntu Server, SSH keys and Tailscale ✅
-- [ ] **Phase 1: Kubernetes the Hard Way.** Build a cluster by hand on 4 VMs, then break and fix the networking (✅ cluster built, smoke tests pass, survives reboot · 🚧 break-it exercises)
+- [x] **Phase 1: Kubernetes the Hard Way.** Build a cluster by hand on 4 VMs, then break and fix it (✅ cluster built, survives reboot · ✅ 5 break-it exercises plus a spread rule) ✅
 - [ ] **Phase 2: Main cluster.** Wired Ethernet, then k3s, Argo CD and Helm, with everything deployed from this repo. First app: **Jellyfin** media server (persistent storage, GPU passthrough for transcoding)
 - [ ] **Phase 3: Services.** Tailscale operator, AdGuard Home, Sealed Secrets, Vaultwarden and backups
 - [ ] **Phase 4: Observability.** Prometheus, Grafana, OpenTelemetry and Uptime Kuma
@@ -136,7 +136,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 | 02 | [Installing Ubuntu Server on the laptop](docs/02-installing-ubuntu.md) | ✅ Done |
 | 03 | [Kubernetes the Hard Way](docs/03-kubernetes-the-hard-way.md) | ✅ Cluster built |
 | 04 | [Network housekeeping: a permanent address and no VPN key expiry](docs/04-network-housekeeping.md) | 🚧 In progress |
-| 05 | [Break-it exercises: stop parts of the cluster on purpose](docs/05-break-it-exercises.md) | 🚧 4 of 5 done |
+| 05 | [Break-it exercises: stop parts of the cluster on purpose](docs/05-break-it-exercises.md) | ✅ Done |
 | — | [KubeCon NA 2026 notes](docs/kubecon-2026-notes.md) | 📓 Reference |
 
 ## How I document
