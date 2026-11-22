@@ -95,7 +95,20 @@ gelkube is now on `192.168.0.110`, and will stay there.
 ```
 then **Upload**. (`secrets.example.h` in this repo is updated too.)
 
-**What happened:** _to fill in_
+**What happened:** the dashboard went live again on the new address.
+
+### 1.5 Check the whole lab came back after the reboot
+
+**Why:** the reboot was also a test: VMs autostart, the hand-built cluster starts itself, and the status exporter runs as a service.
+
+**Commands:**
+```bash
+curl -s localhost:8787/status | python3 -c "import json,sys; print(json.dumps(json.load(sys.stdin)['k8s'], indent=1))"
+```
+
+**What it does:** asks the status exporter for the lab's health and prints only the Kubernetes part.
+
+**What happened:** `api_ok: true`, v1.32.3, both nodes Ready with 2 pods each, 4/4 pods running, about 5 minutes after the reboot. `sched: 0` is normal: the pods restarted where they already were, so the scheduler had nothing to do.
 
 ---
 
