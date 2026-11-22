@@ -20,6 +20,7 @@ All commands run on the **jumpbox** (`ssh root@192.168.122.10` from gelkube) unl
 | 2 | Stop **kube-scheduler** | Existing pods fine, new pods stay `Pending` | ✅ |
 | 3 | Stop **kube-controller-manager** | Delete a pod and nobody replaces it | ✅ |
 | 4 | Stop the **kubelet** on node-1 | node-1 goes `NotReady` after ~40–50 s, its pods are only moved minutes later | ✅ |
+| ★ | Bonus: add a **spread rule** and make it fight back | A pod that would break the rule stays `Pending` | ✅ |
 | 5 | Delete a **pod route** on node-0 | Pods on node-0 can't reach pods on node-1 | ⏳ |
 
 ### Key ideas, explained like you're 5
@@ -387,3 +388,79 @@ nginx-6b66c8866-v75gr   1/1     Running   0          18s   10.200.0.13   node-0
 - Kubernetes waits **5 minutes** before replacing pods on a quiet node, to avoid duplicates after a short blip.
 - **Terminating** can get stuck forever if the node that runs the pod can't confirm it stopped.
 - Kubernetes heals, but it doesn't **rebalance**. After an outage, everything can end up crowded on the surviving nodes. Fixes: `kubectl rollout restart` by hand, spread rules (`topologySpreadConstraints`) so new pods are spread out, or the **Descheduler** add-on that evicts badly placed pods.
+
+---
+
+## Bonus: a spread rule (topologySpreadConstraints)
+
+**Why:** exercise 4 showed that Kubernetes doesn't spread pods on its own. A spread rule tells the scheduler how to place pods. It still only applies when a pod is **created**; it never moves running pods.
+
+### B.1 Add the rule
+
+**Commands:**
+```bash
+kubectl patch deployment nginx --type merge -p '{"spec":{"template":{"spec":{"topologySpreadConstraints":[{"maxSkew":1,"topologyKey":"kubernetes.io/hostname","whenUnsatisfiable":"DoNotSchedule","labelSelector":{"matchLabels":{"app":"nginx"}}}]}}}}'
+```
+
+**What it does:** adds a rule to the nginx pod template:
+- `topologyKey: kubernetes.io/hostname`: count pods per node (every node has this label with its own name)
+- `labelSelector: app=nginx`: only count nginx pods
+- `maxSkew: 1`: the busiest node may have at most 1 more than the quietest
+- `whenUnsatisfiable: DoNotSchedule`: if a pod would break that, leave it Pending (the other option, `ScheduleAnyway`, only treats it as a preference)
+
+Changing the template caused another rollout (new ReplicaSet `5f55bbdf4`).
+
+### B.2 Make the rule fight back
+
+**Commands:**
+```bash
+kubectl cordon node-1
+kubectl scale deployment nginx --replicas=6
+sleep 15; kubectl get pods -o wide
+```
+
+**What it does:**
+- `kubectl cordon node-1`: marks node-1 "no new pods" (existing pods stay)
+- scales nginx from 4 to 6
+
+**What happened:**
+```
+NAME                    READY   STATUS    RESTARTS   AGE   IP            NODE
+nginx-5f55bbdf4-28496   1/1     Running   0          15s   10.200.0.16   node-0
+nginx-5f55bbdf4-48mn6   1/1     Running   0          29s   10.200.1.13   node-1
+nginx-5f55bbdf4-b8whk   0/1     Pending   0          15s   <none>        <none>
+nginx-5f55bbdf4-gvx25   1/1     Running   0          29s   10.200.0.15   node-0
+nginx-5f55bbdf4-j5tm8   1/1     Running   0          31s   10.200.0.14   node-0
+nginx-5f55bbdf4-rprqf   1/1     Running   0          31s   10.200.1.12   node-1
+```
+The 5th pod went to node-0 (3 vs 2, allowed). The 6th would have made node-0 4 vs 2, which breaks `maxSkew: 1`, and node-1 was closed, so it stayed **Pending**. Without the rule, both would have gone to node-0.
+
+**Commands:**
+```bash
+kubectl describe pod nginx-5f55bbdf4-b8whk | tail -4
+```
+
+**What happened:**
+```
+Warning  FailedScheduling  51s  default-scheduler  0/2 nodes are available: 1 node(s) didn't match pod topology spread constraints, 1 node(s) were unschedulable. preemption: 0/2 nodes are available: 1 No preemption victims found for incoming pod, 1 Preemption is not helpful for scheduling.
+```
+The scheduler explains itself for each node:
+- **node-0:** "didn't match pod topology spread constraints", meaning my rule
+- **node-1:** "unschedulable", meaning the cordon
+- **preemption:** the scheduler also checked whether kicking out lower-priority pods would make room. It wouldn't help, so it didn't.
+
+### B.3 Open node-1 again
+
+**Commands:**
+```bash
+kubectl uncordon node-1
+sleep 10; kubectl get pods -o wide
+```
+
+**What happened:** the Pending pod (`b8whk`) landed on **node-1** (`10.200.1.14`) within seconds, making it **3 and 3**.
+
+### What I learned
+
+- `topologySpreadConstraints` controls *where* new pods go. With `DoNotSchedule` it's a hard rule: a pod waits rather than break it.
+- `kubectl describe pod` → **Events** is the first place to look when a pod is Pending. The scheduler gives a reason for every node.
+- `cordon` / `uncordon` is how you close a node to new pods, for example before maintenance. (`kubectl drain` also moves the existing pods off.)
