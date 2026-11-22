@@ -249,7 +249,7 @@ Then on my desktop: **https://gelkube:8080** → accept the self-signed certific
 
 **What happened:** the Argo CD dashboard, with no applications yet.
 
-> 🔐 To do: change the admin password (User Info → Update password), then delete the `argocd-initial-admin-secret` Secret.
+> 🔐 Done: changed the admin password in the UI (User Info → Update password), then deleted the starter password with `kubectl -n argocd delete secret argocd-initial-admin-secret`.
 > 💡 The port-forward is temporary. In Phase 3 the Tailscale operator will give Argo CD a permanent private HTTPS address.
 
 ---
@@ -340,6 +340,42 @@ Within 15 seconds Argo CD noticed the Deployment no longer matched Git (`replica
 Unlike a change in Git (polled every 3 minutes), a change *in the cluster* is seen almost immediately, because Argo CD watches the cluster live through the API server.
 
 **The rule from now on:** to change anything on k3s, change the repo. Changes made with kubectl get undone.
+
+---
+
+## Step 5: App of apps
+
+**Why:** adding an app still took one `kubectl apply` by hand. With the **app of apps** pattern, one Application (`root`) watches a *folder* of Applications. Adding a file to that folder deploys a new app, with no SSH and no kubectl.
+
+Simple picture: before, I handed the robot each recipe card. Now I give it the **recipe box**.
+
+**Layout:**
+```
+k8s/argocd/
+├── root.yaml              the recipe box: watches k8s/argocd/apps/
+└── apps/
+    └── hello-gelkube.yaml moved here from k8s/argocd/
+```
+`k8s/README.md` explains how to add, change and remove apps.
+
+**Commands:**
+```bash
+cd ~/gelkube-labs && git pull
+kubectl apply -f k8s/argocd/root.yaml
+kubectl -n argocd get applications
+```
+
+**What it does:** gives Argo CD the `root` Application. It's the **last thing ever applied by hand** on k3s. Root reads `k8s/argocd/apps/`, finds `hello-gelkube.yaml`, and takes over managing it. (Root adopted the existing `hello-gelkube` Application; nothing was recreated.)
+
+**What happened:**
+```
+NAME            SYNC STATUS   HEALTH STATUS
+hello-gelkube   Synced        Healthy
+root            Synced        Healthy
+```
+In the UI, `root` shows `hello-gelkube` hanging off it like a family tree.
+
+**From now on:** new app = files in `k8s/apps/<name>/` + one Application in `k8s/argocd/apps/<name>.yaml` → push.
 
 ---
 

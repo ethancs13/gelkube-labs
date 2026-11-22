@@ -80,8 +80,8 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 |---|---|---|---|
 | [k3s](https://k3s.io/) | Lightweight Kubernetes for the main cluster | 2 | ✅ |
 | [kubectl](https://kubernetes.io/docs/reference/kubectl/) + [k9s](https://k9scli.io/) | Cluster CLI and terminal UI | 2 | 🚧 |
-| [Helm](https://helm.sh/) | Installs apps on the cluster | 2 | ⏳ |
-| [Argo CD](https://argo-cd.readthedocs.io/) | GitOps: syncs the cluster from this repo | 2 | ⏳ |
+| [Helm](https://helm.sh/) | Installs apps on the cluster | 2 | 🚧 |
+| [Argo CD](https://argo-cd.readthedocs.io/) | GitOps: syncs the cluster from this repo ([`k8s/`](k8s/)) | 2 | ✅ |
 | [Flux](https://fluxcd.io/) | GitOps alternative, to try on a throwaway cluster | stretch | 🧪 |
 | [Cilium](https://cilium.io/) + Hubble | eBPF networking, and lets me watch packets between pods | stretch | 🧪 |
 
