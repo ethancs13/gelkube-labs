@@ -10,7 +10,8 @@ k8s/
 │       ├── adguard-home.yaml
 │       ├── hello-gelkube.yaml
 │       ├── intel-gpu-plugin.yaml   (manifests come from Intel's repo)
-│       └── jellyfin.yaml
+│       ├── jellyfin.yaml
+│       └── tailscale-operator.yaml  (OAuth secret created by hand, not in Git)
 └── apps/                the apps themselves (plain manifests or Helm values)
     ├── adguard-home/    plain manifests
     ├── hello-gelkube/   plain manifests

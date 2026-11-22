@@ -1,0 +1,28 @@
+# Tailscale Kubernetes operator: puts Kubernetes Services and Ingresses on my tailnet,
+# with their own names and real HTTPS certificates (https://<name>.<tailnet>.ts.net).
+#
+# Its OAuth credentials are NOT in Git (this repo is public). They live in a Secret named
+# "operator-oauth" in the "tailscale" namespace, created by hand once (see docs/09).
+# The chart uses that Secret automatically when oauth.clientId/clientSecret are left empty.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tailscale-operator
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://pkgs.tailscale.com/helmcharts
+    chart: tailscale-operator
+    targetRevision: 1.104.7          # pinned; matches the Tailscale version on my devices
+    helm:
+      releaseName: tailscale-operator
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tailscale
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
