@@ -80,7 +80,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 |---|---|---|---|
 | [k3s](https://k3s.io/) | Lightweight Kubernetes for the main cluster | 2 | ✅ |
 | [kubectl](https://kubernetes.io/docs/reference/kubectl/) + [k9s](https://k9scli.io/) | Cluster CLI and terminal UI | 2 | 🚧 |
-| [Helm](https://helm.sh/) | Installs apps on the cluster | 2 | 🚧 |
+| [Helm](https://helm.sh/) | Installs apps on the cluster (through Argo CD) | 2 | ✅ |
 | [Argo CD](https://argo-cd.readthedocs.io/) | GitOps: syncs the cluster from this repo ([`k8s/`](k8s/)) | 2 | ✅ |
 | [Flux](https://fluxcd.io/) | GitOps alternative, to try on a throwaway cluster | stretch | 🧪 |
 | [Cilium](https://cilium.io/) + Hubble | eBPF networking, and lets me watch packets between pods | stretch | 🧪 |
@@ -88,7 +88,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 ### Services
 | Tech | What it does here | Phase | Status |
 |---|---|---|---|
-| [Jellyfin](https://jellyfin.org/) | My own media server (movies, shows, music), with Intel Quick Sync for transcoding and watching from anywhere over Tailscale. The first real app deployed with Argo CD | 2 | ⏳ |
+| [Jellyfin](https://jellyfin.org/) | My own media server (movies, shows, music), with Intel Quick Sync for transcoding and watching from anywhere over Tailscale. The first real app deployed with Argo CD | 2 | ✅ |
 | [Tailscale Kubernetes operator](https://tailscale.com/kb/1236/kubernetes-operator) | Gives apps private HTTPS URLs on my tailnet | 3 | ⏳ |
 | [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome) | Network-wide ad blocking, used as my tailnet's DNS | 3 | ⏳ |
 | [Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets) | Lets encrypted secrets live safely in Git | 3 | ⏳ |
@@ -137,7 +137,8 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 | 03 | [Kubernetes the Hard Way](docs/03-kubernetes-the-hard-way.md) | ✅ Cluster built |
 | 04 | [Network housekeeping: a permanent address and no VPN key expiry](docs/04-network-housekeeping.md) | ✅ Done |
 | 05 | [Break-it exercises: stop parts of the cluster on purpose](docs/05-break-it-exercises.md) | ✅ Done |
-| 06 | [k3s and Argo CD: the main cluster](docs/06-k3s-and-argocd.md) | 🚧 In progress |
+| 06 | [k3s and Argo CD: the main cluster](docs/06-k3s-and-argocd.md) | ✅ Done |
+| 07 | [Jellyfin media server](docs/07-jellyfin.md) | 🚧 In progress |
 | — | [KubeCon NA 2026 notes](docs/kubecon-2026-notes.md) | 📓 Reference |
 
 ## How I document

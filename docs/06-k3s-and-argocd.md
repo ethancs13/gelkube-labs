@@ -1,7 +1,7 @@
 # 06: k3s and Argo CD (the main cluster)
 
 **Date started:** 2026-11-21
-**Status:** 🚧 In progress
+**Status:** ✅ Done
 **Phase:** 2
 
 > **How to read this doc:** every step has the same four parts: **Why**, **Commands**, **What it does** and **What happened**.
