@@ -19,7 +19,7 @@ All commands run on the **jumpbox** (`ssh root@192.168.122.10` from gelkube) unl
 | 1 | Stop **etcd** | kubectl stops working, but running apps keep running | ✅ |
 | 2 | Stop **kube-scheduler** | Existing pods fine, new pods stay `Pending` | ✅ |
 | 3 | Stop **kube-controller-manager** | Delete a pod and nobody replaces it | ✅ |
-| 4 | Stop the **kubelet** on node-1 | node-1 goes `NotReady` after ~40–50 s, its pods are only moved minutes later | ⏳ |
+| 4 | Stop the **kubelet** on node-1 | node-1 goes `NotReady` after ~40–50 s, its pods are only moved minutes later | ✅ |
 | 5 | Delete a **pod route** on node-0 | Pods on node-0 can't reach pods on node-1 | ⏳ |
 
 ### Key ideas, explained like you're 5
@@ -255,3 +255,112 @@ A brand-new pod (`k6vbm`) appeared, and the scheduler put it on **node-0**, whic
 - The controller-manager is what makes Kubernetes **self-healing**. Without it, a crashed pod just stays gone.
 - **Status fields are reports, not live counts.** They're only as fresh as the controller writing them. (Same lesson as the ESP32 showing "offline" during exercise 1.)
 - A full replacement uses three parts in a row: the **controller-manager** creates the pod, the **scheduler** picks a node, and the **kubelet** on that node starts it.
+
+---
+
+## Exercise 4: Stop a node's kubelet
+
+**Why:** the kubelet is the worker on each node. It runs the pods and checks in with the API server every few seconds. Stopping it shows what Kubernetes does when a node goes quiet.
+
+### 4.1 Break it and watch the node
+
+**Commands:**
+```bash
+ssh root@node-1 systemctl stop kubelet
+kubectl get nodes -w
+```
+
+**What it does:**
+- stops the kubelet on node-1
+- `kubectl get nodes -w`: *watch* mode, prints every change live (Ctrl+C to quit)
+
+**What happened:**
+```
+NAME     STATUS     ROLES    AGE     VERSION
+node-0   Ready      <none>   4d13h   v1.32.3
+node-1   Ready      <none>   4d13h   v1.32.3
+node-1   NotReady   <none>   4d13h   v1.32.3
+```
+After about 40–50 seconds without check-ins, node-1 flipped to **NotReady**.
+
+### 4.2 Are node-1's pods really dead?
+
+**Commands:**
+```bash
+kubectl get pods -o wide
+curl -sI http://node-1:32291 | head -1
+kubectl get pod nginx-54c98b4f84-48z78 -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'; echo
+ssh root@node-1 curl -sI http://10.200.1.8 | head -1
+```
+
+**What it does:**
+- lists the pods (what Kubernetes *thinks*)
+- asks node-1 for a page through the Service's NodePort
+- prints only the pod's hidden **Ready condition**
+- goes onto node-1 and asks the pod at `10.200.1.8` directly, skipping the Service
+
+**What happened:**
+```
+nginx-54c98b4f84-48z78   1/1     Running   3 (21m ago)   4d13h   10.200.1.8   node-1
+nginx-54c98b4f84-68srj   1/1     Running   2 (21m ago)   4d9h    10.200.1.7   node-1
+...
+HTTP/1.1 200 OK
+False
+HTTP/1.1 200 OK
+```
+- **I predicted `0/1`, but it said `1/1`.** The READY column is built from container reports that only the kubelet writes, so it was frozen. The real **Ready condition was `False`**: Kubernetes had quietly marked the pods not-ready.
+- The NodePort `200 OK` doesn't prove much: not-ready pods are removed from the Service, so node-1 most likely forwarded the request to a pod on **node-0**.
+- The direct `200 OK` from `10.200.1.8` *does* prove it: nginx on node-1 was alive. The pods were "zombies", working fine but written off by the cluster. **containerd** runs the containers, not the kubelet, so they kept going.
+
+### 4.3 Wait 5 minutes
+
+**Why:** by default each pod tolerates a NotReady node for **300 seconds** before Kubernetes gives up on it. A quiet node is often just a blip, and replacing pods right away would leave double copies when it comes back.
+
+**Commands:**
+```bash
+sleep 300; kubectl get pods -o wide
+```
+
+**What happened:**
+```
+NAME                     READY   STATUS        RESTARTS      AGE     IP            NODE
+nginx-54c98b4f84-48z78   1/1     Terminating   3 (27m ago)   4d13h   10.200.1.8    node-1
+nginx-54c98b4f84-68srj   1/1     Terminating   2 (27m ago)   4d9h    10.200.1.7    node-1
+nginx-54c98b4f84-6rqq8   1/1     Running       0             86s     10.200.0.10   node-0
+nginx-54c98b4f84-99dgd   1/1     Running       2 (27m ago)   4d9h    10.200.0.6    node-0
+nginx-54c98b4f84-bjb2c   1/1     Running       0             86s     10.200.0.11   node-0
+nginx-54c98b4f84-k6vbm   1/1     Running       0             9m30s   10.200.0.9    node-0
+```
+- 2 replacement pods were created on **node-0**.
+- The node-1 pods were stuck in **Terminating**: only node-1's kubelet can confirm they've stopped, and it was off. They were very likely still running, so there were really 6 copies of nginx while Kubernetes counted 4.
+
+### 4.4 Fix it
+
+**Commands:**
+```bash
+ssh root@node-1 systemctl start kubelet
+sleep 20; kubectl get nodes; kubectl get pods -o wide
+```
+
+**What happened:**
+```
+NAME     STATUS   ROLES    AGE     VERSION
+node-0   Ready    <none>   4d13h   v1.32.3
+node-1   Ready    <none>   4d13h   v1.32.3
+NAME                     READY   STATUS    RESTARTS      AGE     IP            NODE
+nginx-54c98b4f84-6rqq8   1/1     Running   0             3m36s   10.200.0.10   node-0
+nginx-54c98b4f84-99dgd   1/1     Running   2 (29m ago)   4d9h    10.200.0.6    node-0
+nginx-54c98b4f84-bjb2c   1/1     Running   0             3m36s   10.200.0.11   node-0
+nginx-54c98b4f84-k6vbm   1/1     Running   0             11m     10.200.0.9    node-0
+```
+All three predictions held:
+1. node-1 came back **Ready**.
+2. Its kubelet saw the 2 deleted pods, stopped them, and the **Terminating** pods disappeared.
+3. **node-1 stayed empty.** Kubernetes doesn't move pods back to rebalance on its own. All 4 nginx pods are on node-0 until something reshuffles them (for example `kubectl rollout restart deployment nginx`).
+
+### What I learned
+
+- A node is **NotReady** when its kubelet stops checking in (~40–50 s), not when its apps die. The apps can be perfectly fine.
+- Kubernetes waits **5 minutes** before replacing pods on a quiet node, to avoid duplicates after a short blip.
+- **Terminating** can get stuck forever if the node that runs the pod can't confirm it stopped.
+- Kubernetes heals, but it doesn't **rebalance**. After an outage, everything can end up crowded on the surviving nodes.
