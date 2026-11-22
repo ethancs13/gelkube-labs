@@ -308,3 +308,34 @@ adguard-home-6d9df74874-dd2k9   1/1     Running   0          29s
     Startup:      tcp-socket :53 delay=0s timeout=1s period=2s successThreshold=1 failureThreshold=30
 ```
 The new pod passed its checks (`1/1` only shows once readiness passes). Because the Deployment uses `strategy: Recreate`, the house had a few seconds without DNS during the swap.
+
+---
+
+## Step 8: Check a home device (and the IPv6 sneak-around)
+
+**Why:** check that a device on the home network really got the new DNS, and that the modem isn't *also* handing out its own IPv6 DNS server, which would let devices skip AdGuard Home. I used my desktop (wired to the modem, not on Tailscale).
+
+**Commands** (PowerShell on the desktop):
+```powershell
+ipconfig /renew
+ipconfig /all | findstr /c:"DNS Servers" /c:"Lease Obtained"
+nslookup doubleclick.net
+```
+
+**What it does:**
+- `ipconfig /renew`: asks the modem for fresh settings right away
+- `ipconfig /all | findstr ...`: keeps only the DNS server and lease lines
+- `nslookup doubleclick.net`: a lookup with the desktop's normal DNS
+
+**What happened:** the first time, I pasted all three at once and `/renew` ran **last**, so I saw the old settings (`DNS Servers: 192.168.0.1, 205.171.2.65`, doubleclick not blocked). Run one at a time:
+```
+DNS Servers . . . . . . . . . . . : 192.168.0.110
+
+Server:  gelkube
+Address:  192.168.0.110
+Name:    doubleclick.net
+Addresses:  ::
+          0.0.0.0
+```
+- The desktop's only DNS server is **`192.168.0.110`**, and ads are blocked. ✅
+- **No IPv6 sneak-around:** the network adapter has no IPv6 DNS server, and only a local (`fe80::`) IPv6 address.
