@@ -138,7 +138,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 | 04 | [Network housekeeping: a permanent address and no VPN key expiry](docs/04-network-housekeeping.md) | ✅ Done |
 | 05 | [Break-it exercises: stop parts of the cluster on purpose](docs/05-break-it-exercises.md) | ✅ Done |
 | 06 | [k3s and Argo CD: the main cluster](docs/06-k3s-and-argocd.md) | ✅ Done |
-| 07 | [Jellyfin media server](docs/07-jellyfin.md) | 🚧 In progress |
+| 07 | [Jellyfin media server, with hardware transcoding](docs/07-jellyfin.md) | ✅ Done |
 | — | [KubeCon NA 2026 notes](docs/kubecon-2026-notes.md) | 📓 Reference |
 
 ## How I document

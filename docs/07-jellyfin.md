@@ -1,7 +1,7 @@
 # 07: Jellyfin media server
 
 **Date started:** 2026-11-21
-**Status:** 🚧 In progress
+**Status:** ✅ Done
 **Phase:** 2
 
 > **How to read this doc:** every step has the same four parts: **Why**, **Commands**, **What it does** and **What happened**.
@@ -268,3 +268,40 @@ crw-rw---- 1 root root 226,   1 Nov 22 17:40 card1
 crw-rw---- 1 root root 226, 128 Nov 22 17:40 renderD128
 ```
 The new Jellyfin pod is **Running with the GPU inside it**, and the old one (no GPU) was retired. Thanks to the rolling update, Jellyfin stayed up through all three failures.
+
+### 6.6 Switch it on in Jellyfin, and test
+
+**Commands:** none. In Jellyfin: ☰ → **Dashboard** → **Playback** → **Transcoding**:
+- Hardware acceleration: **Intel QuickSync (QSV)**, device `/dev/dri/renderD128`
+- Hardware decoding: H264, HEVC, MPEG2, VC1, VP8, VP9, AV1, HEVC 10bit, VP9 10bit
+- Hardware encoding: on, **Allow encoding in HEVC format**: on
+- Intel Low-Power encoders: left off for now
+
+To force a transcode, I played the movie and picked a **lower quality** than the original (⚙️ → Quality → 480p), then opened **Dashboard** → the playback's ⓘ.
+
+**What happened:**
+```
+Transcoding
+Framerate: 1433fps   611 Kbps   MP4   HEVC   AAC
+Reason for transcoding: The video's bitrate exceeds the limit
+```
+- **Transcoding** to **HEVC**, because I asked for a lower bitrate than the file has
+- **1433 fps**: the film is about 24 fps, so the chip was converting roughly **60× faster than real time**. Software HEVC encoding on the CPU is nowhere near that fast on an SD film, so this is Quick Sync at work.
+
+## Result
+
+Jellyfin runs on k3s, installed from its official Helm chart by Argo CD, with:
+- settings on a 5 GB persistent volume, media from `/srv/media`
+- port 8096 on gelkube (Wi-Fi and Tailscale)
+- hardware transcoding on the Iris Xe through Intel's GPU device plugin, without a privileged pod
+
+## What broke and how I fixed it
+
+| Problem | Cause | Fix |
+|---|---|---|
+| `kubectl get pods,svc,pvc -w`: "you may only specify a single resource type" | Watch mode works on one type at a time | Watch only pods, then list everything once |
+| Jellyfin pod: CreateContainerError, `mkdir .../by-path/...simple-framebuffer.0-card: file exists` | The GPU plugin copies by-path symlinks into pods, and gelkube has an odd extra one | Plugin arg `-bypath=none`, as a kustomize patch in the Argo CD Application |
+| RunContainerError, `open .../simple-framebuffer.0-card: no such file or directory` | Leftover symlink from the boot-time simpledrm driver points at a `card0` that no longer exists, and the plugin had written it into its CDI file | Delete broken symlinks (`find -xtype l -delete`), a boot service to do it before k3s starts, delete the stale CDI file, restart the plugin |
+| `delete pod --field-selector=status.phase!=Running` found nothing | A CrashLoopBackOff pod's phase is still `Running` | Delete the pod by name |
+| `sudo grep ... /var/run/cdi/*`: "No such file" | My shell expands `*` before sudo, and my user can't read that folder | `sudo sh -c '...'` |
+| Argo CD UI unreachable the next day | The `kubectl port-forward` ended with its SSH session | Refresh from the CLI with the `argocd.argoproj.io/refresh` annotation; permanent access comes with the Tailscale operator (Phase 3) |
