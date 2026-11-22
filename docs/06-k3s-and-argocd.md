@@ -306,6 +306,41 @@ The request path: my browser → gelkube port 80 → **svclb** → **Traefik** �
 1. **Argo CD polls GitHub every 3 minutes** by default. (The **Refresh** button in the UI checks right away. A GitHub webhook would make it instant, but GitHub can't reach Argo CD while it's private on my tailnet.)
 2. **The kubelet refreshes ConfigMap files inside running pods on its own timer**, up to about a minute after the ConfigMap changes. nginx then serves the new file; the pods don't even restart.
 
+### 4.4 Self-healing: change the cluster by hand and watch Git win
+
+**Why:** with `selfHeal: true`, Git is the boss. A change made directly in the cluster should be undone.
+
+**Commands:**
+```bash
+kubectl -n hello scale deployment hello-gelkube --replicas=5
+kubectl -n hello get pods
+sleep 15; kubectl -n hello get pods
+```
+
+**What it does:** asks for 5 pods directly (going around Git), then lists the pods twice, 15 seconds apart.
+
+**What happened:**
+```
+NAME                             READY   STATUS              RESTARTS   AGE
+hello-gelkube-54b569d46b-776wx   1/1     Running             0          4m10s
+hello-gelkube-54b569d46b-nklxl   0/1     ContainerCreating   0          0s
+hello-gelkube-54b569d46b-wqvmp   0/1     ContainerCreating   0          0s
+hello-gelkube-54b569d46b-xsqbt   1/1     Running             0          4m10s
+hello-gelkube-54b569d46b-z6cgl   0/1     ContainerCreating   0          0s
+
+NAME                             READY   STATUS        RESTARTS   AGE
+hello-gelkube-54b569d46b-776wx   1/1     Running       0          4m25s
+hello-gelkube-54b569d46b-nklxl   1/1     Terminating   0          15s
+hello-gelkube-54b569d46b-wqvmp   1/1     Terminating   0          15s
+hello-gelkube-54b569d46b-xsqbt   1/1     Running       0          4m25s
+hello-gelkube-54b569d46b-z6cgl   1/1     Terminating   0          15s
+```
+Within 15 seconds Argo CD noticed the Deployment no longer matched Git (`replicas: 2`), set it back, and the 3 extra pods were removed. When a ReplicaSet scales down it removes the **newest** pods first, so the 2 original pods kept running.
+
+Unlike a change in Git (polled every 3 minutes), a change *in the cluster* is seen almost immediately, because Argo CD watches the cluster live through the API server.
+
+**The rule from now on:** to change anything on k3s, change the repo. Changes made with kubectl get undone.
+
 ---
 
 ## What broke and how I fixed it
