@@ -25,8 +25,8 @@ The API server doesn't record *who* made each request, so the exporter guesses f
 ```bash
 scp root@192.168.122.10:/usr/local/bin/kubectl ~/kubectl && sudo install ~/kubectl /usr/local/bin/ && rm ~/kubectl
 mkdir -p ~/.kube
-ssh root@192.168.122.10 'kubectl config view --raw --flatten --minify' > ~/.kube/config
-chmod 600 ~/.kube/config
+ssh root@192.168.122.10 'kubectl config view --raw --flatten --minify' > ~/.kube/kthw.config
+chmod 600 ~/.kube/kthw.config
 echo "192.168.122.11 server.kubernetes.local server" | sudo tee -a /etc/hosts
 kubectl get nodes
 ```
@@ -66,7 +66,8 @@ ip -br a show wlp0s20f3
 ```
 
 **What it does:**
-- `User=ethansroka` in the unit runs it as you, so it uses your `~/.kube/config` and your libvirt access
+- `User=ethansroka` in the unit runs it as you, so it has your libvirt access
+- `Environment=KUBECONFIG=...kthw.config` points it at the hand-built cluster. (`~/.kube/config` belongs to k3s since [06](../../docs/06-k3s-and-argocd.md).)
 - `Environment=LIBVIRT_DEFAULT_URI=qemu:///system` makes `virsh` see the system VMs
 - The `ip` command shows gelkube's home Wi-Fi address. That's what goes in the ESP32's `secrets.h`.
 
