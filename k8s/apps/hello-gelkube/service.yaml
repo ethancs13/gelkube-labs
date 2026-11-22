@@ -1,0 +1,11 @@
+# A stable name and IP inside the cluster for the nginx pods
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-gelkube
+spec:
+  selector:
+    app: hello-gelkube
+  ports:
+    - port: 80
+      targetPort: 80
