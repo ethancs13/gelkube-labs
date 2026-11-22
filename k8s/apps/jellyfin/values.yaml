@@ -30,3 +30,7 @@ resources:
     memory: 256Mi
   limits:
     memory: 3Gi
+    # Hardware transcoding: ask for gelkube's Intel Iris Xe graphics (Quick Sync).
+    # The Intel GPU device plugin (k8s/argocd/apps/intel-gpu-plugin.yaml) offers it and
+    # hands /dev/dri/renderD128 to this pod. Without it, the pod would stay Pending.
+    gpu.intel.com/i915: 1

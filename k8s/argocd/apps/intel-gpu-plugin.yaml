@@ -1,0 +1,24 @@
+# Intel's official GPU device plugin (https://github.com/intel/intel-device-plugins-for-kubernetes).
+# It finds gelkube's Iris Xe graphics (/dev/dri) and advertises it to Kubernetes as a resource,
+# gpu.intel.com/i915, that pods can ask for, like CPU or memory. Jellyfin asks for 1.
+# The manifests come straight from Intel's repo at a pinned release; Argo CD renders them with kustomize.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: intel-gpu-plugin
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/intel/intel-device-plugins-for-kubernetes.git
+    targetRevision: v0.37.1          # pinned release; bump it here to upgrade
+    path: deployments/gpu_plugin
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: intel-gpu-plugin
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
