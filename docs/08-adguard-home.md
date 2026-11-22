@@ -192,11 +192,13 @@ sudo tailscale set --accept-dns=false
 - **Nameservers → Add nameserver → Custom → `100.99.121.82`**
 - **Override DNS servers: on** (Tailscale devices use it instead of whatever network they're on)
 
-### 5.3 Test on my phone, on cellular
+### 5.3 Test over Tailscale
 
-**What happened:** with Wi-Fi off and Tailscale on, browsing on my phone showed up in AdGuard Home, and it blocked `doubleclick.net` and `incoming.telemetry.mozilla.org` (Firefox's telemetry). ✅
+**What happened:** new queries showed up in AdGuard Home over Tailscale, and it blocked `doubleclick.net` and `incoming.telemetry.mozilla.org` (Firefox's telemetry). ✅
 
-But the phone appeared as client **`10.42.0.31`**, not its Tailscale address:
+> Correction: I thought this was my phone on cellular, but the Tailscale admin console showed only **two machines** in my tailnet, gelkube and my desktop (`win-os1cv6lnqme`, `100.98.119.17`). My phone wasn't on Tailscale at all. These queries were my **desktop**, which also uses AdGuard Home once **Override DNS servers** is on. (Jellyfin on the phone had worked over home Wi-Fi.)
+
+But the client appeared as **`10.42.0.31`**, not its Tailscale address:
 
 ```bash
 kubectl get pods -A -o wide | grep -w 10.42.0.31
@@ -234,6 +236,6 @@ kubectl -n adguard-home get svc
 NAME           TYPE           CLUSTER-IP     EXTERNAL-IP                   PORT(S)
 adguard-home   LoadBalancer   10.43.62.161   192.168.0.110,100.99.121.82   53:31420/UDP,53:31420/TCP,3000:30386/TCP
 ```
-Right after, a new client appeared in AdGuard Home with its own Tailscale address, **`100.98.119.17`**, instead of more queries piling onto `10.42.0.31`. ✅
+Right after, a new client appeared in AdGuard Home with its own Tailscale address, **`100.98.119.17`** (my desktop), instead of more queries piling onto `10.42.0.31`. ✅
 
 > I'd also briefly tried turning off Tailscale's own SNAT (`sudo tailscale set --snat-subnet-routes=false`), which didn't help, and set it back to `true`.
