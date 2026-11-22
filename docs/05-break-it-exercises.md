@@ -17,7 +17,7 @@ All commands run on the **jumpbox** (`ssh root@192.168.122.10` from gelkube) unl
 | # | Break this | Prediction | Status |
 |---|---|---|---|
 | 1 | Stop **etcd** | kubectl stops working, but running apps keep running | ✅ |
-| 2 | Stop **kube-scheduler** | Existing pods fine, new pods stay `Pending` | ⏳ |
+| 2 | Stop **kube-scheduler** | Existing pods fine, new pods stay `Pending` | ✅ |
 | 3 | Stop **kube-controller-manager** | Delete a pod and nobody replaces it | ⏳ |
 | 4 | Stop the **kubelet** on node-1 | node-1 goes `NotReady` after ~40–50 s, its pods are only moved minutes later | ⏳ |
 | 5 | Delete a **pod route** on node-0 | Pods on node-0 can't reach pods on node-1 | ⏳ |
@@ -115,3 +115,48 @@ The API server reconnected by itself, and nothing had to be restarted.
 - **etcd going down freezes the cluster, it doesn't crash it.** Apps keep running, but nobody can deploy, scale or fix anything until it's back.
 - That's why production clusters run **3 or 5 etcd members**: they keep working if one dies (they need a majority to agree).
 - Kubernetes splits **desired state** (in etcd) from **actual state** (on the nodes). Losing the first doesn't erase the second.
+
+---
+
+## Exercise 2: Stop the scheduler
+
+**Why:** the scheduler's only job is picking a node for each new pod. Stopping it shows how the parts split the work: the **controller-manager** creates pods, the **scheduler** places them, and the **kubelet** runs them.
+
+### 2.1 Break it
+
+**Commands:**
+```bash
+ssh root@server systemctl stop kube-scheduler
+```
+
+**What it does:** stops the kube-scheduler service on the server VM.
+
+### 2.2 Ask for more pods
+
+**Commands:**
+```bash
+kubectl scale deployment nginx --replicas=6
+sleep 5; kubectl get pods -o wide
+```
+
+**What it does:**
+- `kubectl scale ... --replicas=6`: changes the desired number of nginx pods from 4 to 6 (written into etcd by the API server)
+- `sleep 5; kubectl get pods -o wide`: waits 5 seconds, then lists the pods with their nodes
+
+**What happened:** the prediction held. The 4 existing pods kept running, and the 2 new pods were created but stayed **`Pending`** with no node (`<none>` in the NODE column). The controller-manager did its part (it made the pods); nobody was there to place them.
+
+### 2.3 Fix it
+
+**Commands:**
+```bash
+ssh root@server systemctl start kube-scheduler
+sleep 5; kubectl get pods -o wide
+```
+
+**What happened:** within seconds of the scheduler starting, the 2 pending pods were placed on nodes and went to **`Running`**. 6/6 pods running.
+
+### What I learned
+
+- Kubernetes is a team of small single-job parts that all watch the API server. If one stops, only its job stops.
+- A `Pending` pod with no node is the classic sign of a scheduler problem (or of no node having room for it).
+- The scheduler didn't need to be told about the waiting pods: it found them itself on startup, because the desired state was already saved in etcd.
