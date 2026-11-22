@@ -1,7 +1,7 @@
 # 09: Tailscale Kubernetes operator (private HTTPS for apps)
 
 **Date started:** 2026-11-22
-**Status:** 🚧 In progress
+**Status:** ✅ Done
 **Phase:** 3
 
 > **How to read this doc:** every step has the same four parts: **Why**, **Commands**, **What it does** and **What happened**.
@@ -114,3 +114,40 @@ kubectl -n argocd get ingress argocd
 **What happened:** **https://argocd.taild5d1c4.ts.net** opened the Argo CD login page, and Firefox shows **Connection secure** (a real Let's Encrypt certificate, no warning). It works from any of my Tailscale devices, and there's no more port-forward. 🐙
 
 (My tailnet's DNS name is `taild5d1c4.ts.net`; every device on it gets `<name>.taild5d1c4.ts.net`.)
+
+---
+
+## Step 5: Jellyfin and AdGuard Home on HTTPS too
+
+**Why:** once the operator exists, giving an app a private HTTPS address is one small file.
+
+**Files:** a new app, `k8s/argocd/apps/tailnet-ingresses.yaml`, watching `k8s/apps/tailnet-ingresses/`, which holds one Ingress per app (each names its own namespace):
+- `jellyfin.yaml`: `jellyfin` Service, port 8096, device name `jellyfin`
+- `adguard-home.yaml`: `adguard-home` Service, port 3000, device name `adguard`
+
+**Commands:**
+```bash
+kubectl -n argocd annotate application root argocd.argoproj.io/refresh=normal --overwrite
+kubectl get ingress -A
+```
+
+**What happened:** both opened with a padlock:
+- **https://jellyfin.taild5d1c4.ts.net**
+- **https://adguard.taild5d1c4.ts.net**
+
+The old addresses (`gelkube:8096`, `192.168.0.110:8096`, `gelkube:3000`) still work, which matters for the TV, since TVs don't run Tailscale. In the Jellyfin phone app, `https://jellyfin.taild5d1c4.ts.net` works both at home and away.
+
+## Result
+
+| App | Private HTTPS address |
+|---|---|
+| Argo CD | https://argocd.taild5d1c4.ts.net |
+| Jellyfin | https://jellyfin.taild5d1c4.ts.net |
+| AdGuard Home | https://adguard.taild5d1c4.ts.net |
+
+Each is a small proxy device on the tailnet (tagged `tag:k8s`), with a real certificate, reachable only from my Tailscale devices.
+
+## To do later
+
+- The operator's OAuth Secret was created by hand → keep an encrypted copy in Git with **Sealed Secrets**
+- Argo CD's `server.insecure` was set by hand → let Argo CD manage its own install from this repo

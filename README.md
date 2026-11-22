@@ -142,7 +142,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 | 06 | [k3s and Argo CD: the main cluster](docs/06-k3s-and-argocd.md) | ✅ Done |
 | 07 | [Jellyfin media server, with hardware transcoding](docs/07-jellyfin.md) | ✅ Done |
 | 08 | [AdGuard Home: ad blocking for the whole network](docs/08-adguard-home.md) | ✅ Done |
-| 09 | [Tailscale operator: private HTTPS addresses for apps](docs/09-tailscale-operator.md) | 🚧 In progress |
+| 09 | [Tailscale operator: private HTTPS addresses for apps](docs/09-tailscale-operator.md) | ✅ Done |
 | — | [KubeCon NA 2026 notes](docs/kubecon-2026-notes.md) | 📓 Reference |
 
 ## How I document
