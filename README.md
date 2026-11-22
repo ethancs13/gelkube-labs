@@ -89,7 +89,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 | Tech | What it does here | Phase | Status |
 |---|---|---|---|
 | [Jellyfin](https://jellyfin.org/) | My own media server (movies, shows, music), with Intel Quick Sync for transcoding and watching from anywhere over Tailscale. The first real app deployed with Argo CD | 2 | ✅ |
-| [Tailscale Kubernetes operator](https://tailscale.com/kb/1236/kubernetes-operator) | Gives apps private HTTPS URLs on my tailnet | 3 | ⏳ |
+| [Tailscale Kubernetes operator](https://tailscale.com/kb/1236/kubernetes-operator) | Gives apps private HTTPS URLs on my tailnet | 3 | ✅ |
 | [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome) | Network-wide ad blocking, used as my tailnet's DNS | 3 | ✅ |
 | [Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets) | Lets encrypted secrets live safely in Git | 3 | ⏳ |
 | [Vaultwarden](https://github.com/dani-garcia/vaultwarden) | Password manager that works with the Bitwarden apps | 3 | ⏳ |

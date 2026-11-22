@@ -111,4 +111,6 @@ kubectl -n argocd get ingress argocd
 
 > ⚠️ This setting was changed by hand, because Argo CD itself was installed with `kubectl apply` (06), not from Git. Later: let Argo CD manage its own install from this repo, so this lives in Git too.
 
-**What happened:** **https://argocd.\<tailnet\>.ts.net** opened the Argo CD login page with a valid certificate (padlock, no warning), from any of my Tailscale devices. No more port-forward. 🐙
+**What happened:** **https://argocd.taild5d1c4.ts.net** opened the Argo CD login page, and Firefox shows **Connection secure** (a real Let's Encrypt certificate, no warning). It works from any of my Tailscale devices, and there's no more port-forward. 🐙
+
+(My tailnet's DNS name is `taild5d1c4.ts.net`; every device on it gets `<name>.taild5d1c4.ts.net`.)
