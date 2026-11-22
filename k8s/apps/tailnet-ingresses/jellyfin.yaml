@@ -1,0 +1,17 @@
+# Jellyfin on the tailnet with HTTPS: https://jellyfin.taild5d1c4.ts.net
+# (http://gelkube:8096 and http://192.168.0.110:8096 keep working for TVs at home.)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jellyfin
+  namespace: jellyfin
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: jellyfin
+      port:
+        number: 8096
+  tls:
+    - hosts:
+        - jellyfin

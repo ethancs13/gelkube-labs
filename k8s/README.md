@@ -12,12 +12,14 @@ k8s/
 │       ├── hello-gelkube.yaml
 │       ├── intel-gpu-plugin.yaml   (manifests come from Intel's repo)
 │       ├── jellyfin.yaml
+│       ├── tailnet-ingresses.yaml
 │       └── tailscale-operator.yaml  (OAuth secret created by hand, not in Git)
 └── apps/                the apps themselves (plain manifests or Helm values)
     ├── adguard-home/    plain manifests
     ├── argocd-ingress/  Tailscale Ingress for the Argo CD UI
     ├── hello-gelkube/   plain manifests
-    └── jellyfin/        values.yaml for the official Helm chart
+    ├── jellyfin/        values.yaml for the official Helm chart
+    └── tailnet-ingresses/  Tailscale Ingresses: https://<name>.taild5d1c4.ts.net
 ```
 
 **Add an app:** put its manifests in `apps/<name>/`, add `argocd/apps/<name>.yaml` pointing at them, push. Argo CD does the rest.

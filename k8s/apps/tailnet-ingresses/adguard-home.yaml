@@ -1,0 +1,17 @@
+# AdGuard Home's web UI on the tailnet with HTTPS: https://adguard.taild5d1c4.ts.net
+# (DNS itself stays on port 53 of gelkube; this is only the admin page.)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: adguard-home
+  namespace: adguard-home
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: adguard-home
+      port:
+        number: 3000
+  tls:
+    - hosts:
+        - adguard

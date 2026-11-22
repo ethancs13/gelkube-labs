@@ -1,0 +1,20 @@
+# Private HTTPS addresses on my tailnet for apps that already exist
+# (each Ingress file names its own namespace). Argo CD's is in argocd-ingress.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tailnet-ingresses
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ethancs13/gelkube-labs.git
+    targetRevision: main
+    path: k8s/apps/tailnet-ingresses
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
