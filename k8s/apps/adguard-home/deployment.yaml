@@ -28,6 +28,25 @@ spec:
           resources:
             requests: { cpu: 50m, memory: 64Mi }
             limits: { memory: 512Mi }
+          # Health checks. The DNS test asks AdGuard Home itself for a domain it blocks
+          # (answered from its filter lists, so it doesn't depend on the internet being up).
+          # The image is Alpine-based, so busybox's nslookup is available.
+          startupProbe:            # give it up to 60 s to start listening before the other checks begin
+            tcpSocket: { port: 53 }
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:          # only send DNS traffic to it once it actually answers
+            exec:
+              command: ["nslookup", "doubleclick.net", "127.0.0.1"]
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 2
+          livenessProbe:           # if it stops answering for about a minute, restart the container
+            exec:
+              command: ["nslookup", "doubleclick.net", "127.0.0.1"]
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
       volumes:
         - name: conf
           persistentVolumeClaim: { claimName: adguard-conf }

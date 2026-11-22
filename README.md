@@ -123,9 +123,11 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 - [x] **Phase 1: Kubernetes the Hard Way.** Build a cluster by hand on 4 VMs, then break and fix it (✅ cluster built, survives reboot · ✅ 5 break-it exercises plus a spread rule) ✅
 - [ ] **Phase 2: Main cluster.** Wired Ethernet, then k3s, Argo CD and Helm, with everything deployed from this repo. First app: **Jellyfin** media server (persistent storage, GPU passthrough for transcoding)
 - [ ] **Phase 3: Services.** Tailscale operator, AdGuard Home, Sealed Secrets, Vaultwarden and backups
+  - [ ] Later: a **second AdGuard Home** on another machine (mini PC or Raspberry Pi) as the modem's Secondary DNS, kept in sync with [adguardhome-sync](https://github.com/bakito/adguardhome-sync), so the house keeps DNS if gelkube is down
 - [ ] **Phase 4: Observability.** Prometheus, Grafana, OpenTelemetry and Uptime Kuma
 - [ ] **Phase 5: AI agents.** kagent, Agent Sandbox and OpenShell
 - [ ] **Phase 6: ESP32 status display**
+  - [ ] Later: a **DNS health check** in the status exporter, so the ESP32 turns red when AdGuard Home stops answering
 - [ ] **Stretch goals:** swap in Cilium, try Flux, and contribute to a Kubernetes SIG
 
 ## Build log
