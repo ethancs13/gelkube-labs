@@ -141,6 +141,54 @@ node-1   Ready    <none>   4d13h   v1.32.3
 ```
 Two clusters on one laptop, each with its own kubeconfig. A kubeconfig is just "which cluster, and who am I", and `KUBECONFIG` picks which one kubectl uses.
 
+### 2.4 Look around
+
+**Why:** in the hand-built cluster I installed every part myself. What did k3s set up?
+
+**Commands:**
+```bash
+kubectl get pods -A
+systemctl status k3s --no-pager | head -5
+kubectl top nodes
+```
+
+**What it does:**
+- `kubectl get pods -A`: pods in **all** namespaces, including the system ones
+- `systemctl status k3s`: the k3s service itself
+- `kubectl top nodes`: CPU and memory use, measured by metrics-server
+
+**What happened:**
+```
+NAMESPACE     NAME                                      READY   STATUS      RESTARTS
+kube-system   coredns-577d995dff-dxjmz                  1/1     Running     0
+kube-system   helm-install-gateway-api-crd-pxzq7        0/1     Completed   0
+kube-system   helm-install-traefik-crd-bttrm            0/1     Completed   0
+kube-system   helm-install-traefik-h5dwz                0/1     Completed   1
+kube-system   local-path-provisioner-56c6584955-c4z9r   1/1     Running     0
+kube-system   metrics-server-778c4649b4-tjgv7           1/1     Running     0
+kube-system   svclb-traefik-e6384d45-lsr2s              2/2     Running     0
+kube-system   traefik-68df944ff7-nxmp2                  1/1     Running     0
+
+● k3s.service - Lightweight Kubernetes
+     Active: active (running) since Sun 2026-11-22 05:52:44 UTC; 3min 53s ago
+
+NAME      CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)
+gelkube   548m         3%       3725Mi          24%
+```
+
+| Pod | Simple picture | What it does |
+|---|---|---|
+| coredns | The cluster's phone book | Turns names like `nginx.default` into IPs |
+| traefik | The front door | Routes web traffic on ports 80/443 to the right app |
+| svclb-traefik | The doorbell wiring | k3s's small load balancer (ServiceLB): connects gelkube's real ports 80/443 to Traefik |
+| local-path-provisioner | The storage clerk | When an app asks for storage, it makes a folder on gelkube's disk |
+| metrics-server | The thermometer | Measures CPU and memory per pod, for `kubectl top` |
+| helm-install-… (Completed) | Delivery workers who left | One-time jobs that installed Traefik and the Gateway API definitions **with Helm**, which is built into k3s |
+
+**The puzzle:** the API server, scheduler and controller-manager **aren't pods**. k3s runs them, plus the kubelet and containerd, inside **one program**, the `k3s` service. There's no etcd either: a single k3s server keeps its state in a small **SQLite** database. That's why it starts in seconds.
+
+`548m` CPU means 548 **millicores**, about half of one CPU thread (3% of 16).
+
 ---
 
 ## What broke and how I fixed it
