@@ -13,6 +13,18 @@ spec:
     repoURL: https://github.com/intel/intel-device-plugins-for-kubernetes.git
     targetRevision: v0.37.1          # pinned release; bump it here to upgrade
     path: deployments/gpu_plugin
+    kustomize:
+      patches:
+        # -bypath=none: don't copy /dev/dri/by-path symlinks into pods. gelkube's kernel adds an extra
+        # by-path entry for the boot framebuffer (pci-0000:00:02.0-platform-simple-framebuffer.0-card),
+        # and in the default "single" mode containerd fails with "mkdir ... file exists".
+        - target:
+            kind: DaemonSet
+            name: intel-gpu-plugin
+          patch: |-
+            - op: add
+              path: /spec/template/spec/containers/0/args
+              value: ["-bypath=none"]
   destination:
     server: https://kubernetes.default.svc
     namespace: intel-gpu-plugin
