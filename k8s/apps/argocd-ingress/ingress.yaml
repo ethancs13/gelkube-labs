@@ -1,0 +1,20 @@
+# Puts the Argo CD web UI on my tailnet as its own device, "argocd", with a real
+# HTTPS certificate: https://argocd.<tailnet>.ts.net
+# The Tailscale operator sees ingressClassName "tailscale", starts a small proxy pod,
+# and that proxy joins the tailnet. Tailscale handles HTTPS, so Argo CD itself runs
+# in plain-HTTP ("insecure") mode behind it (see docs/09).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: argocd-server
+      port:
+        number: 80
+  tls:
+    - hosts:
+        - argocd

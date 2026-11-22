@@ -8,12 +8,14 @@ k8s/
 │   ├── root.yaml        the "app of apps": watches argocd/apps/ (applied by hand, once)
 │   └── apps/            one Argo CD Application per app
 │       ├── adguard-home.yaml
+│       ├── argocd-ingress.yaml
 │       ├── hello-gelkube.yaml
 │       ├── intel-gpu-plugin.yaml   (manifests come from Intel's repo)
 │       ├── jellyfin.yaml
 │       └── tailscale-operator.yaml  (OAuth secret created by hand, not in Git)
 └── apps/                the apps themselves (plain manifests or Helm values)
     ├── adguard-home/    plain manifests
+    ├── argocd-ingress/  Tailscale Ingress for the Argo CD UI
     ├── hello-gelkube/   plain manifests
     └── jellyfin/        values.yaml for the official Helm chart
 ```

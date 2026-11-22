@@ -1,0 +1,19 @@
+# Argo CD's own web UI on the tailnet, through the Tailscale operator.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-ingress
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ethancs13/gelkube-labs.git
+    targetRevision: main
+    path: k8s/apps/argocd-ingress
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
