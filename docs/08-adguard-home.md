@@ -206,4 +206,34 @@ kube-system   svclb-adguard-home-ea480c2c-s82vv   3/3   Running   0   15m   10.4
 ```
 That's the **svclb pod**, k3s's ServiceLB "doorbell" for AdGuard Home. Traffic arriving over Tailscale gets **SNAT**ed (its source address replaced) on the way through it, while traffic from my home Wi-Fi keeps its real address. I tested whether Tailscale's own SNAT was responsible (`sudo tailscale set --snat-subnet-routes=false`); nothing changed, so I set it back (`--snat-subnet-routes=true`).
 
-**Known limitation for now:** blocking works for Tailscale devices, but they all show up as one client, `10.42.0.31`. Possible fixes later: run AdGuard Home with `hostNetwork`, or replace ServiceLB with MetalLB. Since queries arrive from one address, per-device rules can't tell Tailscale devices apart either.
+### 5.4 Fix: keep the real address of Tailscale devices
+
+**Why it happened:** there were two different paths into AdGuard Home:
+1. **Home Wi-Fi → `192.168.0.110:53`.** k3s's ServiceLB registers that address as the Service's LoadBalancer IP, so **kube-proxy** has a rule for it and sends traffic **straight to the pod**, keeping the sender's address (`externalTrafficPolicy: Local`).
+2. **Tailscale → `100.99.121.82:53`.** kube-proxy had no rule for that address, so the traffic fell through to ServiceLB's backup path: a **hostPort** on the svclb pod, which forwards it with **its own address** stamped on (masquerade). Every Tailscale device looked like `10.42.0.31`.
+
+**Fix:** tell kube-proxy about the Tailscale address too, with the Service's `externalIPs`:
+```yaml
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  externalIPs:
+    - 100.99.121.82
+```
+
+**Commands** (after pushing):
+```bash
+kubectl -n argocd annotate application adguard-home argocd.argoproj.io/refresh=normal --overwrite
+kubectl -n adguard-home get svc
+```
+
+**What it does:** refreshes the **adguard-home** app. (Refreshing `root` didn't pick it up: root only watches the *list* of apps in `k8s/argocd/apps/`, while this change was inside `k8s/apps/adguard-home/`, which the app itself watches. Rule of thumb: refresh the app whose folder changed.)
+
+**What happened:**
+```
+NAME           TYPE           CLUSTER-IP     EXTERNAL-IP                   PORT(S)
+adguard-home   LoadBalancer   10.43.62.161   192.168.0.110,100.99.121.82   53:31420/UDP,53:31420/TCP,3000:30386/TCP
+```
+Right after, a new client appeared in AdGuard Home with its own Tailscale address, **`100.98.119.17`**, instead of more queries piling onto `10.42.0.31`. ✅
+
+> I'd also briefly tried turning off Tailscale's own SNAT (`sudo tailscale set --snat-subnet-routes=false`), which didn't help, and set it back to `true`.
