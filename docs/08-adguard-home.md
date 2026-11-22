@@ -166,3 +166,44 @@ Top blocked domains:  doubleclick.net                2
 ```
 - **Client `192.168.0.7`, my desktop's real address**, not a pod address like `10.42.x.x`. That's `externalTrafficPolicy: Local` doing its job. (AdGuard Home even found its Windows name with a reverse lookup.)
 - 6 queries = 2 lookups × (IPv4 + IPv6), plus 2 reverse lookups (`110.0.168.192.in-addr.arpa`) that `nslookup` makes to show the server's name.
+
+---
+
+## Step 5: Use AdGuard Home as the tailnet's DNS
+
+**Why:** every device on my Tailscale network then gets ad blocking, **even on cellular, away from home**. It's set in the Tailscale admin console, so it's easy to undo, and it only affects Tailscale devices.
+
+### 5.1 Keep gelkube's own DNS out of it
+
+**Commands** (on gelkube):
+```bash
+tailscale ip -4
+sudo tailscale set --accept-dns=false
+```
+
+**What it does:**
+- prints gelkube's Tailscale address: **`100.99.121.82`**
+- tells gelkube **not** to take DNS settings from Tailscale. Otherwise, once the tailnet points at AdGuard Home, gelkube's own lookups would go through AdGuard Home again (the same trap as 2.2).
+
+### 5.2 Point the tailnet at AdGuard Home
+
+**Commands:** none. In <https://login.tailscale.com/admin/dns>:
+- MagicDNS: on
+- **Nameservers → Add nameserver → Custom → `100.99.121.82`**
+- **Override DNS servers: on** (Tailscale devices use it instead of whatever network they're on)
+
+### 5.3 Test on my phone, on cellular
+
+**What happened:** with Wi-Fi off and Tailscale on, browsing on my phone showed up in AdGuard Home, and it blocked `doubleclick.net` and `incoming.telemetry.mozilla.org` (Firefox's telemetry). ✅
+
+But the phone appeared as client **`10.42.0.31`**, not its Tailscale address:
+
+```bash
+kubectl get pods -A -o wide | grep -w 10.42.0.31
+```
+```
+kube-system   svclb-adguard-home-ea480c2c-s82vv   3/3   Running   0   15m   10.42.0.31   gelkube
+```
+That's the **svclb pod**, k3s's ServiceLB "doorbell" for AdGuard Home. Traffic arriving over Tailscale gets **SNAT**ed (its source address replaced) on the way through it, while traffic from my home Wi-Fi keeps its real address. I tested whether Tailscale's own SNAT was responsible (`sudo tailscale set --snat-subnet-routes=false`); nothing changed, so I set it back (`--snat-subnet-routes=true`).
+
+**Known limitation for now:** blocking works for Tailscale devices, but they all show up as one client, `10.42.0.31`. Possible fixes later: run AdGuard Home with `hostNetwork`, or replace ServiceLB with MetalLB. Since queries arrive from one address, per-device rules can't tell Tailscale devices apart either.
