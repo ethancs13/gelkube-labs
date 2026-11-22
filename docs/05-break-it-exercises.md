@@ -143,7 +143,17 @@ sleep 5; kubectl get pods -o wide
 - `kubectl scale ... --replicas=6`: changes the desired number of nginx pods from 4 to 6 (written into etcd by the API server)
 - `sleep 5; kubectl get pods -o wide`: waits 5 seconds, then lists the pods with their nodes
 
-**What happened:** the prediction held. The 4 existing pods kept running, and the 2 new pods were created but stayed **`Pending`** with no node (`<none>` in the NODE column). The controller-manager did its part (it made the pods); nobody was there to place them.
+**What happened:**
+```
+NAME                     READY   STATUS    RESTARTS      AGE     IP           NODE
+nginx-54c98b4f84-48z78   1/1     Running   3 (14m ago)   4d13h   10.200.1.8   node-1
+nginx-54c98b4f84-68srj   1/1     Running   2 (14m ago)   4d9h    10.200.1.7   node-1
+nginx-54c98b4f84-99dgd   1/1     Running   2 (14m ago)   4d9h    10.200.0.6   node-0
+nginx-54c98b4f84-hcjns   0/1     Pending   0             38s     <none>       <none>
+nginx-54c98b4f84-mcc4p   0/1     Pending   0             38s     <none>       <none>
+nginx-54c98b4f84-wmkr6   1/1     Running   2 (14m ago)   4d9h    10.200.0.7   node-0
+```
+The prediction held. The 4 existing pods kept running, and the 2 new pods were created but stayed **`Pending`** with no node and no IP. The controller-manager did its part (it made the pods); nobody was there to place them.
 
 ### 2.3 Fix it
 
@@ -153,10 +163,22 @@ ssh root@server systemctl start kube-scheduler
 sleep 5; kubectl get pods -o wide
 ```
 
-**What happened:** within seconds of the scheduler starting, the 2 pending pods were placed on nodes and went to **`Running`**. 6/6 pods running.
+**What happened:**
+```
+NAME                     READY   STATUS    RESTARTS      AGE     IP           NODE
+nginx-54c98b4f84-48z78   1/1     Running   3 (15m ago)   4d13h   10.200.1.8   node-1
+nginx-54c98b4f84-68srj   1/1     Running   2 (15m ago)   4d9h    10.200.1.7   node-1
+nginx-54c98b4f84-99dgd   1/1     Running   2 (15m ago)   4d9h    10.200.0.6   node-0
+nginx-54c98b4f84-hcjns   1/1     Running   0             97s     10.200.1.9   node-1
+nginx-54c98b4f84-mcc4p   1/1     Running   0             97s     10.200.0.8   node-0
+nginx-54c98b4f84-wmkr6   1/1     Running   2 (15m ago)   4d9h    10.200.0.7   node-0
+```
+- 5 seconds after the start, the pods were **still Pending**. That surprised me. The scheduler uses **leader election**: before it does anything, it has to take a "lease" (a lock stored in the cluster). The old scheduler's lease doesn't vanish when it stops; the new one waits about 15 seconds for it to expire. This is what lets you run several schedulers safely, with only one active at a time.
+- A bit later both pods were placed, **one on each node** (node-1 got `10.200.1.9`, node-0 got `10.200.0.8`). The scheduler spreads pods out, so it put one new pod on each node, leaving them at 3 and 3.
 
 ### What I learned
 
 - Kubernetes is a team of small single-job parts that all watch the API server. If one stops, only its job stops.
 - A `Pending` pod with no node is the classic sign of a scheduler problem (or of no node having room for it).
+- The control plane parts use **leader election**, so a restarted scheduler can take ~15 s before it starts working.
 - The scheduler didn't need to be told about the waiting pods: it found them itself on startup, because the desired state was already saved in etcd.
