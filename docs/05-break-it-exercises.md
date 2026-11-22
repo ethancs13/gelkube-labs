@@ -358,9 +358,32 @@ All three predictions held:
 2. Its kubelet saw the 2 deleted pods, stopped them, and the **Terminating** pods disappeared.
 3. **node-1 stayed empty.** Kubernetes doesn't move pods back to rebalance on its own. All 4 nginx pods are on node-0 until something reshuffles them (for example `kubectl rollout restart deployment nginx`).
 
+### 4.5 Rebalance the pods
+
+**Why:** the scheduler only places a pod once, when it's created, and never moves running pods (moving = killing and recreating, which is disruptive). So after the outage everything stayed on node-0.
+
+**Commands:**
+```bash
+kubectl rollout restart deployment nginx
+sleep 20; kubectl get pods -o wide
+```
+
+**What it does:** replaces every nginx pod one at a time with a fresh one, and the scheduler places each new pod.
+
+**What happened:**
+```
+NAME                    READY   STATUS    RESTARTS   AGE   IP            NODE
+nginx-6b66c8866-2k2bj   1/1     Running   0          20s   10.200.1.10   node-1
+nginx-6b66c8866-7j9k7   1/1     Running   0          20s   10.200.0.12   node-0
+nginx-6b66c8866-h9xxs   1/1     Running   0          19s   10.200.1.11   node-1
+nginx-6b66c8866-v75gr   1/1     Running   0          18s   10.200.0.13   node-0
+```
+- Back to **2 and 2**.
+- The middle of every pod name changed from `54c98b4f84` to `6b66c8866`. That part is the **ReplicaSet's** ID, a hash of the pod template. `rollout restart` stamps a "restarted at" time onto the template, so the hash changes, the Deployment makes a **new ReplicaSet**, and it scales the old one down to 0. That's the same mechanism as a real update to a new image version.
+
 ### What I learned
 
 - A node is **NotReady** when its kubelet stops checking in (~40–50 s), not when its apps die. The apps can be perfectly fine.
 - Kubernetes waits **5 minutes** before replacing pods on a quiet node, to avoid duplicates after a short blip.
 - **Terminating** can get stuck forever if the node that runs the pod can't confirm it stopped.
-- Kubernetes heals, but it doesn't **rebalance**. After an outage, everything can end up crowded on the surviving nodes.
+- Kubernetes heals, but it doesn't **rebalance**. After an outage, everything can end up crowded on the surviving nodes. Fixes: `kubectl rollout restart` by hand, spread rules (`topologySpreadConstraints`) so new pods are spread out, or the **Descheduler** add-on that evicts badly placed pods.
