@@ -1,7 +1,7 @@
 # 04: Network housekeeping (a permanent address and a VPN key that never expires)
 
 **Date started:** 2026-11-21
-**Status:** 🚧 In progress
+**Status:** ✅ Done
 **Phase:** 0 (clean-up before Phase 2)
 
 > **How to read this doc:** every step has the same four parts: **Why**, **Commands**, **What it does** and **What happened**.
@@ -122,7 +122,7 @@ curl -s localhost:8787/status | python3 -c "import json,sys; print(json.dumps(js
 
 **What it does:** gelkube's Tailscale identity no longer runs out.
 
-**What happened:** _to fill in_
+**What happened:** already done. I disabled key expiry for gelkube on day one, when I first set up Tailscale ([02](02-installing-ubuntu.md)), and just never wrote it down. gelkube's row in the admin console shows "Expiry disabled".
 
 ---
 
