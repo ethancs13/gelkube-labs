@@ -1,0 +1,22 @@
+# Two folders that survive restarts (k3s's local-path makes them on gelkube's disk):
+#   conf: AdGuardHome.yaml, the settings written by the setup wizard and the web UI
+#   work: filter lists, query log and statistics
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: adguard-conf
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 100Mi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: adguard-work
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 2Gi

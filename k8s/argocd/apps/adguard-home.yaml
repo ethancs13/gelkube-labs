@@ -1,0 +1,23 @@
+# AdGuard Home: DNS ad blocking for every device at home (and on Tailscale).
+# Plain manifests from k8s/apps/adguard-home. Its settings live in AdGuard Home's own
+# config file on a volume (made by the setup wizard), not in Git.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: adguard-home
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ethancs13/gelkube-labs.git
+    targetRevision: main
+    path: k8s/apps/adguard-home
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: adguard-home
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

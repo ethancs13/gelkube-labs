@@ -1,0 +1,35 @@
+# AdGuard Home: network-wide ad and tracker blocking by DNS.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adguard-home
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate          # stop the old pod before starting a new one: only one may use the data folders
+  selector:
+    matchLabels:
+      app: adguard-home
+  template:
+    metadata:
+      labels:
+        app: adguard-home
+    spec:
+      containers:
+        - name: adguard-home
+          image: adguard/adguardhome:v1.0.0   # pinned; bump here to upgrade
+          ports:
+            - { name: dns-udp, containerPort: 53, protocol: UDP }
+            - { name: dns-tcp, containerPort: 53, protocol: TCP }
+            - { name: http,    containerPort: 3000, protocol: TCP }
+          volumeMounts:
+            - { name: conf, mountPath: /opt/adguardhome/conf }
+            - { name: work, mountPath: /opt/adguardhome/work }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 512Mi }
+      volumes:
+        - name: conf
+          persistentVolumeClaim: { claimName: adguard-conf }
+        - name: work
+          persistentVolumeClaim: { claimName: adguard-work }

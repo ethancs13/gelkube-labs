@@ -7,10 +7,12 @@ k8s/
 ├── argocd/
 │   ├── root.yaml        the "app of apps": watches argocd/apps/ (applied by hand, once)
 │   └── apps/            one Argo CD Application per app
+│       ├── adguard-home.yaml
 │       ├── hello-gelkube.yaml
 │       ├── intel-gpu-plugin.yaml   (manifests come from Intel's repo)
 │       └── jellyfin.yaml
 └── apps/                the apps themselves (plain manifests or Helm values)
+    ├── adguard-home/    plain manifests
     ├── hello-gelkube/   plain manifests
     └── jellyfin/        values.yaml for the official Helm chart
 ```
