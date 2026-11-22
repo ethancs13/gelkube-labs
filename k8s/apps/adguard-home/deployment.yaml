@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: adguard-home
-          image: adguard/adguardhome:v1.0.0   # pinned; bump here to upgrade
+          image: adguard/adguardhome:v0.107.80   # pinned; bump here to upgrade (v1.0.0 is tagged on GitHub but its image is not on Docker Hub yet)
           ports:
             - { name: dns-udp, containerPort: 53, protocol: UDP }
             - { name: dns-tcp, containerPort: 53, protocol: TCP }
