@@ -127,11 +127,11 @@ gelkube asks the modem (`192.168.0.1`) and Quantum Fiber's DNS (`205.171.2.65`) 
 
 ---
 
-## Step 4: Test it from my desktop
+## Step 4: Test it from my laptop
 
 **Why:** prove blocking works before pointing any real device at it.
 
-**Commands** (PowerShell on my desktop):
+**Commands** (PowerShell on my Windows laptop, `win-os1cv6lnqme`):
 ```powershell
 nslookup doubleclick.net 192.168.0.110
 nslookup google.com 192.168.0.110
@@ -164,7 +164,7 @@ DNS Queries 6 · Blocked by Filters 2 (33%)
 Top clients:          WIN-OS1CV6LNQME (192.168.0.7)  6
 Top blocked domains:  doubleclick.net                2
 ```
-- **Client `192.168.0.7`, my desktop's real address**, not a pod address like `10.42.x.x`. That's `externalTrafficPolicy: Local` doing its job. (AdGuard Home even found its Windows name with a reverse lookup.)
+- **Client `192.168.0.7`, my laptop's real address**, not a pod address like `10.42.x.x`. That's `externalTrafficPolicy: Local` doing its job. (AdGuard Home even found its Windows name with a reverse lookup.)
 - 6 queries = 2 lookups × (IPv4 + IPv6), plus 2 reverse lookups (`110.0.168.192.in-addr.arpa`) that `nslookup` makes to show the server's name.
 
 ---
@@ -196,7 +196,7 @@ sudo tailscale set --accept-dns=false
 
 **What happened:** new queries showed up in AdGuard Home over Tailscale, and it blocked `doubleclick.net` and `incoming.telemetry.mozilla.org` (Firefox's telemetry). ✅
 
-> Correction: I thought this was my phone on cellular, but the Tailscale admin console showed only **two machines** in my tailnet, gelkube and my desktop (`win-os1cv6lnqme`, `100.98.119.17`). My phone wasn't on Tailscale at all. These queries were my **desktop**, which also uses AdGuard Home once **Override DNS servers** is on. (Jellyfin on the phone had worked over home Wi-Fi.)
+> Correction: I thought this was my phone on cellular, but the Tailscale admin console showed only **two machines** in my tailnet, gelkube and my Windows laptop (`win-os1cv6lnqme`, `100.98.119.17`). My phone wasn't on Tailscale at all. These queries were my **laptop**, which also uses AdGuard Home once **Override DNS servers** is on. (Jellyfin on the phone had worked over home Wi-Fi.)
 
 But the client appeared as **`10.42.0.31`**, not its Tailscale address:
 
@@ -236,7 +236,7 @@ kubectl -n adguard-home get svc
 NAME           TYPE           CLUSTER-IP     EXTERNAL-IP                   PORT(S)
 adguard-home   LoadBalancer   10.43.62.161   192.168.0.110,100.99.121.82   53:31420/UDP,53:31420/TCP,3000:30386/TCP
 ```
-Right after, a new client appeared in AdGuard Home with its own Tailscale address, **`100.98.119.17`** (my desktop), instead of more queries piling onto `10.42.0.31`. ✅
+Right after, a new client appeared in AdGuard Home with its own Tailscale address, **`100.98.119.17`** (my laptop), instead of more queries piling onto `10.42.0.31`. ✅
 
 > I'd also briefly tried turning off Tailscale's own SNAT (`sudo tailscale set --snat-subnet-routes=false`), which didn't help, and set it back to `true`.
 
@@ -248,10 +248,10 @@ Right after, a new client appeared in AdGuard Home with its own Tailscale addres
 ```
 Top clients
 100.86.3.115              51   ← my phone, on cellular, through Tailscale
-100.98.119.17             41   ← my desktop, through Tailscale
+100.98.119.17             41   ← my laptop, through Tailscale
 10.42.0.31                35   ← old entries from before the externalIPs fix (they age out after 24 h)
-WIN-OS1CV6LNQME (192.168.0.7)  6   ← my desktop over home Wi-Fi, from the first nslookup test
+WIN-OS1CV6LNQME (192.168.0.7)  6   ← my laptop over home Wi-Fi, from the first nslookup test
 ```
 My phone gets ad blocking **away from home**, and shows up under its own address. ✅
 
-**Naming clients:** AdGuard Home → **Settings → Client settings → Add client**, with a name and the `100.x` address as the identifier (Desktop = `100.98.119.17`, Phone = `100.86.3.115`). The dashboard then shows names instead of numbers.
+**Naming clients:** AdGuard Home → **Settings → Client settings → Add client**, with a name and the `100.x` address as the identifier (Laptop = `100.98.119.17`, Phone = `100.86.3.115`). The dashboard then shows names instead of numbers.
