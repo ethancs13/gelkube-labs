@@ -1,0 +1,24 @@
+# Removes broken /dev/dri/by-path shortcuts at boot, before k3s starts.
+#
+# At boot the kernel first draws the screen with a simple framebuffer driver (simpledrm, /dev/dri/card0).
+# When the real Intel driver (i915) loads, card0 goes away, but its by-path shortcut
+# (pci-0000:00:02.0-platform-simple-framebuffer.0-card -> ../card0) is left behind, pointing at nothing.
+# Pods that get the GPU through the Intel device plugin then fail to start with
+# "open /dev/dri/by-path/...simple-framebuffer.0-card: no such file or directory".
+# See docs/07-jellyfin.md.
+#
+# Install:  sudo cp host/dri-cleanup/gelkube-dri-cleanup.service /etc/systemd/system/
+#           sudo systemctl daemon-reload && sudo systemctl enable --now gelkube-dri-cleanup
+
+[Unit]
+Description=Remove broken /dev/dri/by-path symlinks (leftover from simpledrm)
+After=systemd-udev-settle.service systemd-udevd.service
+Before=k3s.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/find /dev/dri/by-path -xtype l -print -delete
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
