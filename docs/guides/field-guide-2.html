@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gelkube Field Guide II</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* One visual world: the ESP32 dashboard's night-purple, slime green and ember orange.
+   Layout: a long field-guide scroll with a sticky chapter rail; each section is one tool. */
+:root {
+  --night: #1a1727;
+  --panel: #241f36;
+  --panel-2: #2e2846;
+  --line: #463d6b;
+  --ink: #ece8f7;
+  --muted: #a69dc6;
+  --slime: #54de7c;
+  --slime-deep: #2eb260;
+  --ember: #ff9a3c;
+  --net: #6edcff;
+  --write: #be96ff;
+  --bad: #f06a6a;
+  --warn: #f2b06a;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+  --r: 14px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 70px; }
+body { margin: 0; background: var(--night); color: var(--ink); font: 17px/1.6 var(--font-body); }
+h1, h2, h3, h4 { font-family: var(--font-display); line-height: 1.1; text-wrap: balance; margin: 0; }
+code, kbd, .mono { font-family: var(--font-mono); font-size: .86em; }
+code { background: var(--panel-2); border: 1px solid var(--line); padding: .05em .35em; border-radius: 6px; }
+a { color: var(--net); }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--net); outline-offset: 2px; border-radius: 6px; }
+.wrap { width: min(1180px, 100% - 32px); margin-inline: auto; }
+.muted { color: var(--muted); }
+
+/* rail */
+.rail { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--night) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.rail .wrap { display: flex; gap: 6px; align-items: center; overflow-x: auto; padding: 10px 0; scrollbar-width: thin; }
+.rail .brand { font: 800 18px var(--font-display); color: var(--slime); margin-right: 10px; white-space: nowrap; text-decoration: none; }
+.rail a.chip { white-space: nowrap; text-decoration: none; color: var(--muted); font-size: 14px; padding: 5px 11px; border-radius: 999px; border: 1px solid transparent; }
+.rail a.chip:hover { color: var(--ink); border-color: var(--line); }
+.rail a.chip.on { color: var(--night); background: var(--slime); }
+
+/* hero */
+.hero { padding: 48px 0 28px; display: grid; grid-template-columns: 1.4fr 1fr; gap: 32px; align-items: center; }
+.eyebrow { font: 600 13px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ember); }
+.hero h1 { font-size: clamp(40px, 6.5vw, 76px); font-weight: 800; letter-spacing: -.02em; margin: 10px 0 14px; }
+.hero h1 em { font-style: normal; color: var(--slime); }
+.hero p { max-width: 60ch; color: var(--muted); margin: 0 0 18px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
+.stat b { display: block; font: 800 28px var(--font-display); color: var(--ink); font-variant-numeric: tabular-nums; }
+.stat span { font-size: 13px; color: var(--muted); }
+.cube-wrap { display: grid; place-items: center; }
+#heroCube { width: min(320px, 80vw); height: auto; }
+
+section { padding: 44px 0; border-top: 1px solid var(--line); }
+.sec-head { display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; margin-bottom: 18px; }
+.sec-head .num { font: 600 14px var(--font-mono); color: var(--ember); }
+.sec-head h2 { font-size: clamp(28px, 4vw, 42px); font-weight: 800; }
+.sec-head p { flex-basis: 100%; margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); }
+.btn { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; font-size: 15px; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--slime); color: var(--night); border-color: var(--slime); font-weight: 700; }
+.btn.on { background: var(--ink); color: var(--night); border-color: var(--ink); font-weight: 700; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* map */
+.map-layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; }
+.map-box { overflow-x: auto; padding: 8px; }
+#mapSvg { width: 100%; min-width: 760px; height: auto; display: block; }
+#mapSvg .grp rect { fill: none; stroke: var(--line); stroke-dasharray: 5 5; }
+#mapSvg .grp text { fill: var(--muted); font: 600 13px var(--font-mono); }
+#mapSvg .node rect { fill: var(--panel-2); stroke: var(--line); stroke-width: 1.5; transition: fill .25s, stroke .25s; }
+#mapSvg .node text { fill: var(--ink); font: 700 13px var(--font-body); text-anchor: middle; }
+#mapSvg .node text.sub { fill: var(--muted); font: 400 10.5px var(--font-mono); }
+#mapSvg .node.hot rect { fill: #3b3260; stroke: var(--slime); stroke-width: 2.5; }
+#mapSvg .node.k3s rect { stroke: #5b4f8c; }
+#mapSvg .k3sbox { fill: rgba(84,222,124,.04); stroke: var(--slime-deep); stroke-width: 1.5; }
+#mapSvg .k3sbox-label { fill: var(--slime); font: 700 13px var(--font-mono); }
+#mapSvg .host-label { fill: var(--ink); font: 800 16px var(--font-display); }
+#mapSvg #flowLine { fill: none; stroke: var(--ember); stroke-width: 2.5; stroke-dasharray: 6 6; opacity: .75; }
+#mapSvg #dot { fill: var(--ember); filter: drop-shadow(0 0 6px var(--ember)); }
+.flow-panel { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.flow-panel h3 { font-size: 20px; }
+.flow-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 420px; overflow-y: auto; }
+.flow-steps li { font-size: 14.5px; line-height: 1.45; padding: 8px 10px; border-radius: 10px; border: 1px solid transparent; color: var(--muted); cursor: pointer; }
+.flow-steps li b { color: var(--ink); }
+.flow-steps li.cur { border-color: var(--ember); background: rgba(255,154,60,.08); color: var(--ink); }
+.flow-steps li.done { color: var(--ink); }
+
+/* chapters */
+.chapters { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
+.chap { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+.chap .tag { font: 600 12px var(--font-mono); color: var(--ember); }
+.chap h3 { font-size: 22px; }
+.chap ol { margin: 0; padding-left: 20px; font-size: 15px; }
+.chap ol li { margin: 3px 0; }
+.chap .lesson { border-left: 3px solid var(--slime); padding: 6px 10px; background: rgba(84,222,124,.06); font-size: 15px; border-radius: 0 8px 8px 0; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill { font: 600 12px var(--font-mono); padding: 3px 8px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); }
+
+/* break-it simulator */
+.sim { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; }
+.switches { padding: 16px; display: grid; gap: 10px; align-content: start; }
+.sw { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); }
+.sw .lbl { font-weight: 700; font-size: 15px; }
+.sw .lbl small { display: block; font-weight: 400; color: var(--muted); font-size: 12.5px; }
+.toggle { width: 52px; height: 28px; border-radius: 999px; border: 1px solid var(--line); background: var(--slime); position: relative; flex: none; }
+.toggle::after { content: ""; position: absolute; top: 3px; left: 27px; width: 20px; height: 20px; border-radius: 50%; background: var(--night); transition: left .2s; }
+.toggle[aria-checked="false"] { background: var(--bad); }
+.toggle[aria-checked="false"]::after { left: 3px; }
+.sim-main { display: grid; gap: 12px; }
+.nodes-vis { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 14px; }
+.nodecol { border: 1px solid var(--line); border-radius: 12px; padding: 10px; min-height: 120px; }
+.nodecol h4 { font-size: 16px; display: flex; justify-content: space-between; gap: 8px; }
+.nodecol h4 span { font: 600 12px var(--font-mono); padding: 2px 8px; border-radius: 999px; }
+.ready { background: rgba(84,222,124,.18); color: var(--slime); }
+.notready { background: rgba(240,106,106,.18); color: var(--bad); }
+.podgrid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.pod { font: 600 11px var(--font-mono); padding: 5px 7px; border-radius: 7px; background: rgba(190,150,255,.18); border: 1px solid var(--write); color: var(--ink); animation: pop .3s ease; }
+.pod.Terminating { opacity: .55; border-style: dashed; border-color: var(--bad); }
+.pod.zombie { border-color: var(--warn); background: rgba(242,176,106,.14); }
+.pendingbox { grid-column: 1 / -1; border: 1px dashed var(--line); border-radius: 12px; padding: 8px 10px; font-size: 14px; color: var(--muted); }
+.pendingbox .pod { background: rgba(255,154,60,.14); border-color: var(--ember); }
+@keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.term { background: #120f1c; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font: 13px/1.5 var(--font-mono); height: 270px; overflow-y: auto; white-space: pre-wrap; }
+.term .cmd { color: var(--slime); }
+.term .err { color: var(--bad); }
+.term .note { color: var(--muted); }
+.term .ok { color: var(--net); }
+.insight { padding: 12px 14px; font-size: 15px; border-left: 4px solid var(--ember); }
+
+/* gitops */
+.gitops { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; }
+.loop { padding: 16px; }
+#loopSvg { width: 100%; height: auto; display: block; }
+#loopSvg text { fill: var(--ink); font: 700 14px var(--font-body); text-anchor: middle; }
+#loopSvg text.small { fill: var(--muted); font: 400 11.5px var(--font-mono); }
+.gstate { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+.gcell { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+.gcell small { color: var(--muted); font: 600 11px var(--font-mono); text-transform: uppercase; letter-spacing: .06em; }
+.gcell b { display: block; font: 800 22px var(--font-display); }
+.badge { display: inline-block; font: 700 12px var(--font-mono); padding: 3px 9px; border-radius: 999px; }
+.synced { background: rgba(84,222,124,.18); color: var(--slime); }
+.outofsync { background: rgba(255,154,60,.2); color: var(--ember); }
+.tree { padding: 16px; font: 14px/1.7 var(--font-mono); }
+.tree .r { color: var(--slime); font-weight: 600; }
+
+/* bestiary */
+.best-tools { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.bestiary { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+.beast { padding: 16px 18px; background: linear-gradient(var(--panel), var(--panel)) padding-box; border-top: 4px solid var(--ember); display: flex; flex-direction: column; gap: 8px; }
+.beast h3 { font-size: 21px; color: var(--ember); font-variant: small-caps; letter-spacing: .02em; }
+.beast .type { font-style: italic; color: var(--muted); font-size: 14px; margin-top: -4px; }
+.beast .row { font-size: 14.5px; }
+.beast .row b { color: var(--slime); font-family: var(--font-display); }
+.beast .sign { font: 12px/1.45 var(--font-mono); background: #120f1c; border: 1px solid var(--line); border-radius: 8px; padding: 8px; color: var(--bad); white-space: pre-wrap; word-break: break-word; }
+.beast .weak { transition: filter .25s; }
+.hide-answers .beast .weak { filter: blur(6px); cursor: pointer; user-select: none; }
+.hide-answers .beast .weak.shown { filter: none; }
+
+/* flashcards */
+.fc-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.fc-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.card3d { perspective: 1200px; }
+.fcard { position: relative; height: 270px; transform-style: preserve-3d; transition: transform .55s; cursor: pointer; border: none; background: none; width: 100%; padding: 0; text-align: left; }
+.fcard.flip { transform: rotateY(180deg); }
+.face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 18px; padding: 22px; display: flex; flex-direction: column; justify-content: center; gap: 10px; border: 1px solid var(--line); }
+.face.front { background: radial-gradient(circle at 20% 10%, #3b3260, var(--panel)); }
+.face.back { background: var(--panel-2); transform: rotateY(180deg); }
+.face .cat { font: 600 12px var(--font-mono); color: var(--ember); text-transform: uppercase; letter-spacing: .08em; }
+.face .term-big { font: 800 clamp(26px, 4vw, 38px) var(--font-display); }
+.face .def { font-size: 16.5px; }
+.face .hint { font-size: 13px; color: var(--muted); }
+.fc-nav { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.glossary { padding: 6px 16px; max-height: 470px; overflow-y: auto; }
+.glossary dl { margin: 0; }
+.glossary dt { font-weight: 700; margin-top: 10px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.glossary dt .pill { font-size: 10.5px; }
+.glossary dd { margin: 2px 0 0; color: var(--muted); font-size: 14.5px; }
+.glossary dt.known::after { content: "✓ got it"; font: 600 11px var(--font-mono); color: var(--slime); }
+
+/* explain */
+.explain { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+.pitch { padding: 18px; display: flex; flex-direction: column; gap: 8px; }
+.pitch .q { font: 800 20px var(--font-display); color: var(--net); }
+.pitch .a { font-size: 15.5px; }
+.pitch .follow { font-size: 14px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; }
+.pitch .follow b { color: var(--ink); }
+
+/* quiz */
+.quiz { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; }
+.qbox { padding: 22px; }
+.qbox .qn { font: 600 13px var(--font-mono); color: var(--ember); }
+.qbox h3 { font-size: clamp(20px, 2.6vw, 26px); margin: 8px 0 16px; }
+.opts { display: grid; gap: 8px; }
+.opt { text-align: left; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel-2); font-size: 15.5px; }
+.opt:hover:not([disabled]) { border-color: var(--muted); }
+.opt.right { border-color: var(--slime); background: rgba(84,222,124,.14); }
+.opt.wrong { border-color: var(--bad); background: rgba(240,106,106,.12); }
+.opt[disabled] { cursor: default; }
+.explain-box { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: #120f1c; border: 1px solid var(--line); font-size: 15px; }
+.qside { padding: 16px; display: grid; gap: 12px; align-content: start; }
+.dots { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; }
+.qdot { aspect-ratio: 1; border-radius: 6px; background: var(--panel-2); border: 1px solid var(--line); font: 600 10px var(--font-mono); display: grid; place-items: center; color: var(--muted); padding: 0; }
+.qdot.cur { border-color: var(--ember); color: var(--ink); }
+.qdot.r { background: var(--slime); color: var(--night); border-color: var(--slime); }
+.qdot.w { background: var(--bad); color: var(--night); border-color: var(--bad); }
+.score { font: 800 40px var(--font-display); font-variant-numeric: tabular-nums; }
+.result { padding: 22px; display: grid; gap: 10px; }
+
+/* cheats */
+.cheats { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 14px; }
+.cheat { padding: 16px; }
+.cheat h3 { font-size: 19px; margin-bottom: 8px; }
+.cmdrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: start; margin: 8px 0; }
+.cmdrow pre { margin: 0; font: 12.5px/1.5 var(--font-mono); background: #120f1c; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; white-space: pre-wrap; word-break: break-all; }
+.cmdrow .what { grid-column: 1 / -1; font-size: 13.5px; color: var(--muted); margin-top: -2px; }
+.copy { font-size: 12px; padding: 5px 9px; }
+.addr { width: 100%; border-collapse: collapse; font-size: 14px; }
+.addr td { padding: 6px 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.addr td:first-child { color: var(--muted); }
+.addr td:last-child { font-family: var(--font-mono); font-size: 12.5px; word-break: break-all; }
+
+footer { padding: 32px 0 60px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); }
+
+@media (max-width: 960px) {
+  .hero, .map-layout, .sim, .gitops, .fc-layout, .quiz { grid-template-columns: 1fr; }
+  .cube-wrap { display: none; }
+}
+@media (max-width: 520px) {
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .nodes-vis { grid-template-columns: 1fr; }
+  .chapters, .bestiary, .explain, .cheats { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .fcard, .pod { transition: none; animation: none; }
+}
+</style>
+</head>
+<body>
+
+<nav class="rail" aria-label="Sections">
+  <div class="wrap">
+    <a class="brand" href="#top">gelkube</a>
+    <a class="chip" href="#map">Map</a>
+    <a class="chip" href="#chapters">What we did</a>
+    <a class="chip" href="#break-it">Break-it lab</a>
+    <a class="chip" href="#gitops">GitOps loop</a>
+    <a class="chip" href="#bestiary">Bug bestiary</a>
+    <a class="chip" href="#names">Names to know</a>
+    <a class="chip" href="#explain">Explain it</a>
+    <a class="chip" href="#quiz">Quiz</a>
+    <a class="chip" href="#cheats">Cheat sheet</a>
+  </div>
+</nav>
+
+<header class="wrap hero" id="top">
+  <div>
+    <div class="eyebrow">Field guide II · build log 04–09 · Nov 21–22, 2026</div>
+    <h1>From hand-built to <em>GitOps</em></h1>
+    <p>One weekend: a permanent address, five ways to break a cluster on purpose, a second cluster that deploys itself from GitHub, a movie server with a GPU, ad blocking for the whole house, and private HTTPS for everything. Play with the map, break things in the lab, then take the quiz.</p>
+    <div class="stats">
+      <div class="stat"><b>6</b><span>build log entries</span></div>
+      <div class="stat"><b>5</b><span>things broken on purpose</span></div>
+      <div class="stat"><b>11</b><span>bugs caught and fixed</span></div>
+      <div class="stat"><b>1433</b><span>fps, GPU transcoding</span></div>
+      <div class="stat"><b>3</b><span>apps on private HTTPS</span></div>
+      <div class="stat"><b>20</b><span>quiz questions</span></div>
+    </div>
+  </div>
+  <div class="cube-wrap"><canvas id="heroCube" width="640" height="600" aria-label="The gelkube cube, bobbing" role="img"></canvas></div>
+</header>
+
+<main>
+
+<!-- 01 MAP -->
+<section id="map">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="num">01</span><h2>The map</h2>
+      <p>Everything that's running now, in one picture. Pick a journey and follow the orange dot hop by hop. Click a step to jump to it.</p>
+    </div>
+    <div class="btn-row" id="flowBtns" style="margin-bottom:12px"></div>
+    <div class="map-layout">
+      <div class="panel map-box">
+        <svg id="mapSvg" viewBox="0 0 1200 790" role="img" aria-label="Diagram of the gelkube lab: internet, home network, tailnet and the gelkube server with k3s"></svg>
+      </div>
+      <div class="panel flow-panel">
+        <h3 id="flowTitle">Journey</h3>
+        <div class="btn-row">
+          <button class="btn primary" id="playBtn">▶ Play</button>
+          <button class="btn" id="stepBtn">Step ›</button>
+          <button class="btn" id="resetBtn">↺ Restart</button>
+        </div>
+        <ol class="flow-steps" id="flowSteps"></ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 02 CHAPTERS -->
+<section id="chapters">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="num">02</span><h2>What we did, step by step</h2>
+      <p>The six build log entries, each with its steps, the names it introduced and the one lesson to keep. The full write-ups are in <code>docs/04</code>–<code>docs/09</code> in the repo.</p>
+    </div>
+    <div class="chapters" id="chapterGrid"></div>
+  </div>
+</section>
+
+<!-- 03 BREAK-IT -->
+<section id="break-it">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="num">03</span><h2>Break-it lab</h2>
+      <p>A simulator of your hand-built cluster (nginx on node-0 and node-1). Flip parts off, run commands, and watch what still works. It behaves the way your real cluster did in doc 05.</p>
+    </div>
+    <div class="sim">
+      <div class="panel switches" id="switches"></div>
+      <div class="sim-main">
+        <div class="panel nodes-vis" id="nodesVis"></div>
+        <div class="btn-row" id="simActions"></div>
+        <div class="term" id="term" aria-live="polite"></div>
+        <div class="panel insight" id="insight"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 04 GITOPS -->
+<section id="gitops">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="num">04</span><h2>The GitOps loop</h2>
+      <p>Git is the boss. Push a change and Argo CD pulls it in; change the cluster by hand and Argo CD puts it back. Time is sped up: 1 second here ≈ 1 minute for real.</p>
+    </div>
+    <div class="gitops">
+      <div class="panel loop">
+        <svg id="loopSvg" viewBox="0 0 520 360" role="img" aria-label="Loop between GitHub, Argo CD and the cluster">
+          <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#463d6b"/></marker></defs>
+          <path id="lp1" d="M 140 90 Q 260 20 380 90" fill="none" stroke="#463d6b" stroke-width="3" marker-end="url(#arr)"/>
+          <path id="lp2" d="M 405 140 Q 440 230 330 280" fill="none" stroke="#463d6b" stroke-width="3" marker-end="url(#arr)"/>
+          <path id="lp3" d="M 300 300 Q 380 250 420 150" fill="none" stroke="#463d6b" stroke-width="2" stroke-dasharray="4 5" marker-end="url(#arr)"/>
+          <g id="gGit"><rect x="40" y="70" width="140" height="70" rx="14" fill="#2e2846" stroke="#463d6b" stroke-width="2"/><text x="110" y="100">GitHub</text><text class="small" x="110" y="122">replicas: 2</text></g>
+          <g id="gArgo"><rect x="340" y="70" width="140" height="70" rx="14" fill="#2e2846" stroke="#463d6b" stroke-width="2"/><text x="410" y="100">Argo CD</text><text class="small" x="410" y="122" id="argoTxt">Synced</text></g>
+          <g id="gK"><rect x="170" y="260" width="180" height="80" rx="14" fill="#2e2846" stroke="#463d6b" stroke-width="2"/><text x="260" y="290">k3s cluster</text><text class="small" x="260" y="314" id="kTxt">2 pods · "hello from git"</text></g>
+          <text class="small" x="260" y="38">polls Git every 3 min</text>
+          <text class="small" x="470" y="235">applies</text>
+          <text class="small" x="455" y="300">watches live</text>
+          <circle id="gdot" r="8" fill="#ff9a3c" cx="140" cy="90" opacity="0"/>
+        </svg>
+        <div class="gstate">
+          <div class="gcell"><small>Git says</small><b id="gGitVal">2 pods · "hello from git"</b></div>
+          <div class="gcell"><small>Cluster has</small><b id="gKVal">2 pods · "hello from git"</b></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" id="gPush">Edit the message on GitHub</button>
+          <button class="btn" id="gScale">kubectl scale --replicas=5 (by hand)</button>
+          <button class="btn" id="gRefresh">Click Refresh</button>
+        </div>
+        <p class="muted" id="gLog" style="margin:10px 0 0;font-size:14.5px" aria-live="polite">Status: <span class="badge synced">Synced</span> Git and the cluster match.</p>
+      </div>
+      <div class="panel tree">
+        <h3 style="font-family:var(--font-display);font-size:20px;margin-bottom:6px">App of apps</h3>
+        <p class="muted" style="font-family:var(--font-body);font-size:14.5px;margin:0 0 8px">One file applied by hand, ever: <code>root.yaml</code>. It watches a folder of Applications; each of those watches its own app.</p>
+<div style="white-space:pre;overflow-x:auto"><span class="r">root</span>  ← k8s/argocd/root.yaml
+├─ hello-gelkube        plain manifests   (k8s/apps/hello-gelkube)
+├─ jellyfin             Helm chart 3.7.0 + values.yaml
+├─ intel-gpu-plugin     Intel's repo v0.37.1 + kustomize patch
+├─ adguard-home         plain manifests
+├─ tailscale-operator   Helm chart 1.104.7
+├─ argocd-ingress       Tailscale Ingress → argocd
+└─ tailnet-ingresses    Tailscale Ingresses → jellyfin, adguard</div>
+        <p class="muted" style="font-family:var(--font-body);font-size:14.5px;margin:12px 0 0"><b style="color:var(--ink)">Which app do I refresh?</b> The one whose folder changed. <code>root</code> only notices apps being added or removed.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 BESTIARY -->
+<section id="bestiary">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="num">05</span><h2>Bug bestiary</h2>
+      <p>Every monster you met this weekend, with its signs and its weakness. Turn on quiz mode to hide the weaknesses and guess them first.</p>
+    </div>
+    <div class="best-tools">
+      <button class="btn" id="hideBtn" aria-pressed="false">Quiz mode: off</button>
+      <span class="muted" style="font-size:14px">In quiz mode, click a blurred weakness to reveal it.</span>
+    </div>
+    <div class="bestiary" id="bestiaryGrid"></div>
+  </div>
+</section>
+
+<!-- 06 NAMES -->
+<section id="names">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="num">06</span><h2>Names to know</h2>
+      <p>The words you'll hear when you talk about this with other people. Flip the cards to drill them; the full list is on the right.</p>
+    </div>
+    <div class="fc-layout">
+      <div>
+        <div class="fc-tools" id="fcCats"></div>
+        <div class="card3d">
+          <button class="fcard" id="fcard" aria-label="Flashcard, click to flip">
+            <div class="face front"><div class="cat" id="fcCat"></div><div class="term-big" id="fcTerm"></div><div class="hint">Click or press space to flip</div></div>
+            <div class="face back"><div class="cat" id="fcCat2"></div><div class="def" id="fcDef"></div><div class="hint" id="fcEx"></div></div>
+          </button>
+        </div>
+        <div class="fc-nav">
+          <button class="btn" id="fcPrev">‹ Back</button>
+          <span class="mono muted" id="fcCount"></span>
+          <button class="btn" id="fcAgain">Again</button>
+          <button class="btn primary" id="fcGot">Got it ✓</button>
+          <button class="btn" id="fcShuffle">Shuffle</button>
+        </div>
+      </div>
+      <div class="panel glossary"><dl id="glossary"></dl></div>
+    </div>
+  </div>
+</section>
+
+<!-- 07 EXPLAIN -->
+<section id="explain">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="num">07</span><h2>Explain it to a friend</h2>
+      <p>Thirty-second answers for when someone asks, plus the follow-up question they'll probably ask next.</p>
+    </div>
+    <div class="explain" id="explainGrid"></div>
+  </div>
+</section>
+
+<!-- 08 QUIZ -->
+<section id="quiz">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="num">08</span><h2>The quiz</h2>
+      <p>Twenty questions over everything from doc 04 to doc 09. Each answer explains why. At the end you can retry just the ones you missed.</p>
+    </div>
+    <div class="quiz">
+      <div class="panel" id="qMain"></div>
+      <div class="panel qside">
+        <div><div class="muted mono" style="font-size:12px">SCORE</div><div class="score" id="qScore">0 / 0</div></div>
+        <div class="dots" id="qDots"></div>
+        <div class="muted" style="font-size:14px" id="qBest"></div>
+        <button class="btn" id="qRestart">Start over</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 09 CHEATS -->
+<section id="cheats">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="num">09</span><h2>Cheat sheet</h2>
+      <p>The commands you'll actually reuse, and every address in the lab.</p>
+    </div>
+    <div class="cheats" id="cheatGrid"></div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">gelkube field guide II · covers <code>docs/04</code> to <code>docs/09</code> of <a href="https://github.com/ethancs13/gelkube-labs">ethancs13/gelkube-labs</a>. Volume I covers Phase 0 and Kubernetes the Hard Way.</div>
+</footer>
+
+<script>
+/* ---------- helpers ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const el = (tag, attrs = {}, html = "") => { const e = document.createElement(tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (html) e.innerHTML = html; return e; };
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("gkfg2:" + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("gkfg2:" + k, JSON.stringify(v)); } catch (e) {} }
+};
+
+/* ---------- hero cube (canvas) ---------- */
+(function cube() {
+  const c = $("#heroCube"); if (!c) return; const g = c.getContext("2d");
+  let t = 0;
+  const bubbles = Array.from({ length: 9 }, (_, i) => ({ x: 240 + Math.random() * 160, p: Math.random(), s: 3 + Math.random() * 5 }));
+  function draw() {
+    g.clearRect(0, 0, c.width, c.height);
+    const b = Math.abs(Math.sin(t * 1.6)), sq = 1 - b;
+    const cx = 320, hw = 150 + sq * 14, hh = 78, eh = 170 - sq * 18, floor = 520;
+    const ty = floor - (2 * hh + eh) - b * 28;
+    g.fillStyle = "rgba(14,12,22,.8)"; g.beginPath(); g.ellipse(cx, floor + 12, 120 + sq * 30, 16, 0, 0, Math.PI * 2); g.fill();
+    const T = [cx, ty], R = [cx + hw, ty + hh], C = [cx, ty + 2 * hh], L = [cx - hw, ty + hh];
+    const R2 = [R[0], R[1] + eh], C2 = [C[0], C[1] + eh], L2 = [L[0], L[1] + eh];
+    const poly = (pts, f) => { g.beginPath(); g.moveTo(...pts[0]); pts.slice(1).forEach(p => g.lineTo(...p)); g.closePath(); g.fillStyle = f; g.fill(); };
+    poly([L, C, C2, L2], "rgba(84,222,124,.78)");
+    poly([C, R, R2, C2], "rgba(46,178,96,.82)");
+    poly([T, R, C, L], "rgba(168,255,160,.85)");
+    // pods inside
+    for (let i = 0; i < 4; i++) { g.fillStyle = "#9a6ef0"; const px = cx + 30 + i * 26, py = C[1] + 40 + i * 22 + Math.sin(t * 3 + i) * 6; g.fillRect(px, py, 22, 22); }
+    // bubbles
+    g.strokeStyle = "rgba(255,255,255,.75)"; g.lineWidth = 2;
+    bubbles.forEach(bb => { bb.p = (bb.p + 0.004) % 1; const y = C2[1] - 20 - bb.p * (C2[1] - T[1] - 60); g.beginPath(); g.arc(bb.x - 80, y, bb.s, 0, Math.PI * 2); g.stroke(); });
+    g.strokeStyle = "#0e4626"; g.lineWidth = 3;
+    [[T, R], [R, C], [C, L], [L, T], [L, L2], [R, R2], [C, C2], [L2, C2], [C2, R2]].forEach(([a, z]) => { g.beginPath(); g.moveTo(...a); g.lineTo(...z); g.stroke(); });
+    // face
+    const fx = (L[0] + C[0]) / 2, fy = (L[1] + C2[1]) / 2;
+    const blink = (t % 4) > 3.85;
+    [-1, 1].forEach(s => {
+      const ex = fx + s * 32;
+      if (blink) { g.strokeStyle = "#14141f"; g.lineWidth = 4; g.beginPath(); g.moveTo(ex - 14, fy); g.lineTo(ex + 14, fy); g.stroke(); }
+      else { g.fillStyle = "#fff"; g.beginPath(); g.ellipse(ex, fy, 16, 20, 0, 0, Math.PI * 2); g.fill(); g.fillStyle = "#14141f"; g.beginPath(); g.arc(ex + 4, fy + 4, 9, 0, Math.PI * 2); g.fill(); g.fillStyle = "#fff"; g.beginPath(); g.arc(ex + 7, fy, 3, 0, Math.PI * 2); g.fill(); }
+      g.fillStyle = "rgba(255,150,170,.8)"; g.beginPath(); g.ellipse(ex + s * 8, fy + 34, 12, 7, 0, 0, Math.PI * 2); g.fill();
+    });
+    g.strokeStyle = "#14141f"; g.lineWidth = 4; g.beginPath(); g.arc(fx, fy + 22, 16, 0.2 * Math.PI, 0.8 * Math.PI); g.stroke();
+    t += 0.03;
+    if (!reduceMotion) requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ---------- 01 MAP ---------- */
+const NODES = {
+  github:   [150, 85, "GitHub", "ethancs13/gelkube-labs"],
+  upstream: [150, 160, "Upstream DNS", "Cloudflare · Quad9"],
+  registry: [150, 235, "Image registries", "Docker Hub · pkgs"],
+  modem:    [395, 95, "Quantum Fiber modem", "192.168.0.1 · DHCP"],
+  tv:       [560, 95, "TV", "home Wi-Fi"],
+  desktop:  [730, 95, "Desktop", "192.168.0.32 · wired"],
+  esp32:    [560, 205, "ESP32 dashboard", "reads :8787/status"],
+  phone:    [925, 95, "Phone", "100.86.3.115"],
+  laptop:   [1095, 95, "Laptop", "100.98.119.17"],
+  tsdns:    [1010, 205, "Tailnet DNS", "→ 100.99.121.82"],
+  wlan:     [125, 355, "wlp0s20f3", "192.168.0.110 (reserved)"],
+  resolved: [315, 355, "systemd-resolved", "resolv.conf → modem"],
+  igpu:     [505, 355, "Iris Xe · Quick Sync", "/dev/dri/renderD128"],
+  media:    [695, 355, "/srv/media", "movies · shows · music"],
+  exporter: [885, 355, "status exporter", ":8787 → ESP32"],
+  tsd:      [1075, 355, "tailscaled", "100.99.121.82"],
+  kplan:    [140, 460, "kube-proxy", "LoadBalancer IP rule"],
+  api:      [355, 460, "API server", "scheduler · ctrl-mgr · SQLite"],
+  svclb:    [570, 460, "svclb pod", "hostPort · masquerades"],
+  traefik:  [790, 460, "Traefik", ":80 · class traefik"],
+  kpts:     [1030, 460, "kube-proxy", "externalIPs rule"],
+  argocd:   [140, 550, "Argo CD", "ns argocd"],
+  jellyfin: [355, 550, "Jellyfin", "ns jellyfin · :8096"],
+  adguard:  [570, 550, "AdGuard Home", "ns adguard-home · :53"],
+  tsproxy:  [790, 550, "Tailscale proxies", "argocd·jellyfin·adguard"],
+  operator: [1030, 550, "Tailscale operator", "tag:k8s-operator"],
+  storage:  [140, 635, "local-path PVCs", "k3s/storage on disk"],
+  gpuplug:  [355, 635, "Intel GPU plugin", "gpu.intel.com/i915"],
+  lists:    [570, 635, "Block lists", "HaGeZi Pro + 4 more"],
+  hello:    [790, 635, "hello-gelkube", "nginx + ConfigMap"],
+  builtins: [1030, 635, "CoreDNS · metrics", "k3s built-ins"],
+  vms:      [600, 735, "KVM VMs: Kubernetes the Hard Way", "jumpbox .10 · server .11 · node-0 .20 · node-1 .21 · virbr0 192.168.122.x"]
+};
+const GROUPS = [
+  [20, 20, 260, 255, "the internet"],
+  [300, 20, 520, 255, "home network · 192.168.0.0/24"],
+  [840, 20, 340, 255, "tailnet · taild5d1c4.ts.net"]
+];
+const FLOWS = {
+  dnsHome: { title: "A TV asks for an ad", btn: "DNS at home", steps: [
+    ["tv", "<b>Your TV</b> wants to load an ad from <code>doubleclick.net</code>, so first it asks its DNS server for the address."],
+    ["modem", "When the TV joined the Wi-Fi, the <b>modem's DHCP</b> told it: your DNS server is <code>192.168.0.110</code> (Custom Servers, both slots)."],
+    ["wlan", "The question reaches <b>gelkube's Wi-Fi address</b>, port 53."],
+    ["kplan", "<code>192.168.0.110</code> is the Service's LoadBalancer IP, so <b>kube-proxy</b> has a rule for it and forwards straight to the pod. <code>externalTrafficPolicy: Local</code> keeps the TV's real address."],
+    ["adguard", "<b>AdGuard Home</b> looks the name up…"],
+    ["lists", "…and finds it on a <b>block list</b> (AdGuard DNS filter, HaGeZi Pro…)."],
+    ["adguard", "It answers <code>0.0.0.0</code>, an address that goes nowhere."],
+    ["tv", "The <b>ad never loads</b>, and the dashboard credits the block to the TV's own IP."]
+  ]},
+  dnsTs: { title: "Your phone on cellular", btn: "DNS over Tailscale", steps: [
+    ["phone", "On cellular, <b>your phone</b> looks up a site. Tailscale's <b>Override DNS servers</b> sends the question into the tailnet."],
+    ["tsdns", "The <b>tailnet's DNS setting</b> names <code>100.99.121.82</code>, gelkube's Tailscale address."],
+    ["tsd", "The packet arrives at <b>tailscaled</b> on gelkube."],
+    ["kpts", "The Service lists <code>100.99.121.82</code> under <b>externalIPs</b>, so kube-proxy has a rule for it too and keeps the phone's <code>100.86.3.115</code> address."],
+    ["adguard", "Not on any block list, so <b>AdGuard Home</b> asks the real phone book…"],
+    ["upstream", "…an <b>upstream DNS</b> server on the internet…"],
+    ["adguard", "…and passes the answer back."],
+    ["phone", "The page loads, and AdGuard's dashboard shows <b>100.86.3.115</b> as its own client."]
+  ]},
+  dnsTsBefore: { title: "Before the externalIPs fix", btn: "…before the fix", steps: [
+    ["phone", "Same question from <b>your phone</b> over Tailscale…"],
+    ["tsdns", "…to <code>100.99.121.82</code>…"],
+    ["tsd", "…arriving at <b>tailscaled</b>."],
+    ["svclb", "kube-proxy had <b>no rule</b> for the Tailscale address, so the packet fell through to ServiceLB's backup path: a <b>hostPort on the svclb pod</b>."],
+    ["adguard", "svclb forwards it with <b>its own address stamped on</b> (masquerade). AdGuard sees <code>10.42.0.31</code>."],
+    ["phone", "Blocking still works, but <b>every Tailscale device looks like one client</b>. Fix: <code>externalIPs: [100.99.121.82]</code>."]
+  ]},
+  movie: { title: "Watch a movie", btn: "Jellyfin + GPU", steps: [
+    ["phone", "You open <code>https://jellyfin.taild5d1c4.ts.net</code> in the <b>Jellyfin app</b>."],
+    ["tsproxy", "That name belongs to a <b>Tailscale proxy pod</b> (tag <code>k8s</code>) the operator made. It holds a real Let's Encrypt certificate and does the HTTPS."],
+    ["jellyfin", "It forwards plain HTTP to the <b>jellyfin</b> Service on port 8096."],
+    ["media", "Jellyfin reads the movie from <code>/srv/media</code> through a <b>hostPath</b> volume (it's <code>/media</code> inside the pod)."],
+    ["gpuplug", "You picked a lower quality, so it must <b>transcode</b>. The <b>Intel GPU plugin</b> gave this pod the GPU because it asked for <code>gpu.intel.com/i915: 1</code>."],
+    ["igpu", "<b>Quick Sync</b> converts to HEVC at about <b>1433 fps</b>, roughly 60× faster than real time, while the CPU stays free."],
+    ["jellyfin", "Jellyfin streams the result back…"],
+    ["phone", "…and the movie plays, at home or away."]
+  ]},
+  gitops: { title: "Change the site from GitHub", btn: "GitOps sync", steps: [
+    ["github", "You <b>edit</b> <code>configmap.yaml</code> on GitHub and commit. No SSH, no kubectl."],
+    ["argocd", "<b>Argo CD</b> checks Git every <b>3 minutes</b> (or right away when you click Refresh)."],
+    ["argocd", "It compares Git with the cluster: <b>OutOfSync</b>."],
+    ["api", "It applies the change through the <b>API server</b>, the only part that writes to k3s's SQLite database."],
+    ["hello", "The kubelet refreshes the <b>ConfigMap file</b> inside the running pods within about a minute. No restart."],
+    ["traefik", "Traefik keeps serving <code>http://gelkube</code>, now with the new message. <b>Synced</b>."]
+  ]},
+  argoui: { title: "Open Argo CD safely", btn: "Private HTTPS", steps: [
+    ["laptop", "On your laptop you open <code>https://argocd.taild5d1c4.ts.net</code>."],
+    ["operator", "Earlier, the <b>Tailscale operator</b> saw an Ingress with <code>ingressClassName: tailscale</code> and created a proxy device called <b>argocd</b>."],
+    ["tsproxy", "That <b>proxy</b> answers with a real certificate: Connection secure, no warning."],
+    ["argocd", "It forwards plain HTTP to <code>argocd-server</code> on port 80. That's why Argo CD runs with <code>server.insecure: true</code>."],
+    ["laptop", "No port-forward, and invisible to the internet."]
+  ]}
+};
+
+const svg = $("#mapSvg"); const NS = "http://www.w3.org/2000/svg";
+const sv = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+function buildMap() {
+  GROUPS.forEach(([x, y, w, h, label]) => { const g = sv("g", { class: "grp" }); g.append(sv("rect", { x, y, width: w, height: h, rx: 16 })); const t = sv("text", { x: x + 14, y: y + 22 }); t.textContent = label; g.append(t); svg.append(g); });
+  // gelkube host
+  svg.append(sv("rect", { x: 20, y: 290, width: 1160, height: 490, rx: 20, fill: "rgba(36,31,54,.6)", stroke: "#6b5fa3", "stroke-width": 2 }));
+  const hl = sv("text", { x: 40, y: 318, class: "host-label" }); hl.textContent = "gelkube · Lenovo Yoga · Ubuntu 26.04"; svg.append(hl);
+  svg.append(sv("rect", { x: 40, y: 405, width: 1120, height: 280, rx: 16, class: "k3sbox" }));
+  const kl = sv("text", { x: 56, y: 426, class: "k3sbox-label" }); kl.textContent = "k3s v1.37.2 · one process · pods 10.42.0.0/16 · Services 10.43.0.0/16"; svg.append(kl);
+  svg.append(sv("polyline", { id: "flowLine", points: "" }));
+  for (const id in NODES) {
+    const [x, y, label, sub] = NODES[id];
+    const wide = id === "vms";
+    const w = wide ? 1100 : 160, h = 52;
+    const g = sv("g", { class: "node" + (["api","kplan","kpts","svclb","traefik","argocd","jellyfin","adguard","tsproxy","operator","storage","gpuplug","lists","hello","builtins"].includes(id) ? " k3s" : ""), id: "n-" + id });
+    g.append(sv("rect", { x: x - w / 2, y: y - h / 2, width: w, height: h, rx: 12 }));
+    const t1 = sv("text", { x, y: y - 4 }); t1.textContent = label;
+    const t2 = sv("text", { x, y: y + 14, class: "sub" }); t2.textContent = sub;
+    g.append(t1, t2); svg.append(g);
+  }
+  svg.append(sv("circle", { id: "dot", r: 9, cx: -50, cy: -50 }));
+}
+buildMap();
+
+let flowKey = "dnsHome", stepI = 0, playing = false, anim = null;
+const dot = $("#dot"), line = $("#flowLine");
+function nodeXY(id) { const n = NODES[id]; return [n[0], n[1]]; }
+function setFlow(key) {
+  flowKey = key; stepI = 0; stopPlay();
+  document.querySelectorAll("#flowBtns .btn").forEach(b => b.classList.toggle("on", b.dataset.k === key));
+  const f = FLOWS[key]; $("#flowTitle").textContent = f.title;
+  const ol = $("#flowSteps"); ol.innerHTML = "";
+  f.steps.forEach(([id, html], i) => { const li = el("li", { "data-i": i }, `<span class="mono" style="color:var(--ember)">${i + 1}.</span> ${html}`); li.onclick = () => { stopPlay(); goStep(i, false); }; ol.append(li); });
+  line.setAttribute("points", f.steps.map(s => nodeXY(s[0]).join(",")).join(" "));
+  goStep(0, false);
+}
+function highlight() {
+  const f = FLOWS[flowKey];
+  document.querySelectorAll("#mapSvg .node").forEach(n => n.classList.remove("hot"));
+  const nid = f.steps[stepI][0]; const n = document.getElementById("n-" + nid); if (n) n.classList.add("hot");
+  document.querySelectorAll("#flowSteps li").forEach((li, i) => { li.classList.toggle("cur", i === stepI); li.classList.toggle("done", i < stepI); });
+  const cur = document.querySelector("#flowSteps li.cur"); if (cur) cur.scrollIntoView({ block: "nearest" });
+}
+function goStep(i, animate) {
+  const f = FLOWS[flowKey]; const from = nodeXY(f.steps[stepI][0]); stepI = i; const to = nodeXY(f.steps[i][0]);
+  highlight();
+  if (!animate || reduceMotion) { dot.setAttribute("cx", to[0]); dot.setAttribute("cy", to[1]); return Promise.resolve(); }
+  return new Promise(res => {
+    const t0 = performance.now(), dur = 900;
+    const tick = now => { const k = Math.min(1, (now - t0) / dur), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      dot.setAttribute("cx", from[0] + (to[0] - from[0]) * e); dot.setAttribute("cy", from[1] + (to[1] - from[1]) * e);
+      if (k < 1) anim = requestAnimationFrame(tick); else res(); };
+    anim = requestAnimationFrame(tick);
+  });
+}
+async function play() {
+  if (playing) { stopPlay(); return; }
+  playing = true; $("#playBtn").textContent = "❚❚ Pause";
+  const f = FLOWS[flowKey];
+  if (stepI >= f.steps.length - 1) { stepI = 0; goStep(0, false); await wait(500); }
+  while (playing && stepI < f.steps.length - 1) { await goStep(stepI + 1, true); await wait(1500); }
+  stopPlay();
+}
+function stopPlay() { playing = false; if (anim) cancelAnimationFrame(anim); $("#playBtn").textContent = "▶ Play"; }
+const wait = ms => new Promise(r => setTimeout(r, ms));
+for (const k in FLOWS) { const b = el("button", { class: "btn", "data-k": k }, FLOWS[k].btn); b.onclick = () => setFlow(k); $("#flowBtns").append(b); }
+$("#playBtn").onclick = play;
+$("#stepBtn").onclick = () => { stopPlay(); const f = FLOWS[flowKey]; if (stepI < f.steps.length - 1) goStep(stepI + 1, true); };
+$("#resetBtn").onclick = () => { stopPlay(); goStep(0, false); };
+setFlow("dnsHome");
+
+/* ---------- 02 CHAPTERS ---------- */
+const CHAPTERS = [
+  { n: "04", t: "A permanent address", steps: ["Found gelkube's MAC address: <code>08:9d:f4:fe:20:ae</code>", "Modem refused <code>.102</code>: it was gelkube's live lease, and manual reservations come from <code>.102–.254</code>", "Reserved <code>192.168.0.110</code>, rebooted gelkube to pick it up", "Pointed the ESP32's <code>STATUS_URL</code> at <code>.110</code>", "Tailscale key expiry: already disabled on day one"], names: ["DHCP reservation", "MAC address", "lease"], lesson: "Servers need addresses that never move. The modem matches by MAC, so a new network card (the USB Ethernet adapter) needs its own reservation." },
+  { n: "05", t: "Break-it exercises", steps: ["Stopped <b>etcd</b>: kubectl timed out, nginx kept serving", "Stopped the <b>scheduler</b>: new pods stuck Pending (and ~15 s of leader election on restart)", "Stopped the <b>controller-manager</b>: deleted pod never replaced; deployment still claimed 4/4", "Stopped <b>node-1's kubelet</b>: NotReady after ~40–50 s, zombie pods, replacements after 5 min, no rebalance", "Bonus: a <b>spread rule</b> held a pod Pending rather than break <code>maxSkew: 1</code>", "Deleted a <b>pod route</b>: 4 of 10 requests failed"], names: ["leader election", "toleration", "topologySpreadConstraints", "cordon"], lesson: "Kubernetes is a team of single-job parts that all go through the API server. Stop one and only its job stops; running apps are hard to kill." },
+  { n: "06", t: "k3s and Argo CD", steps: ["Checked room: 11 GB free memory, 872 GB disk, 16 threads", "Installed <b>k3s v1.37.2</b> with one command, Ready in 22 s", "Split kubeconfigs: <code>~/.kube/config</code> (k3s) and <code>~/.kube/kthw.config</code> (hand-built)", "Installed <b>Argo CD</b> (server-side apply)", "First GitOps app: <b>hello-gelkube</b>, changed from GitHub", "Self-heal: scaled to 5 by hand, Argo CD put it back to 2", "<b>App of apps</b>: <code>root</code> watches <code>k8s/argocd/apps/</code>"], names: ["k3s", "SQLite", "Argo CD", "app of apps", "selfHeal"], lesson: "Git is the control panel. Change the repo, not the cluster: changes made with kubectl get undone." },
+  { n: "07", t: "Jellyfin and the GPU", steps: ["Official <b>Helm chart 3.7.0</b> (Jellyfin 12.4) with my <code>values.yaml</code>, two sources", "Port 8096 via ServiceLB, 5 GB PVC, media from <code>/srv/media</code>", "Night of the Living Dead (public domain) as the first movie", "<b>Intel GPU device plugin v0.37.1</b> → <code>gpu.intel.com/i915</code>", "Three fixes: <code>-bypath=none</code>, the simpledrm ghost symlink + stale CDI file, deleting a CrashLoop pod by name", "Quick Sync transcoding to HEVC at <b>1433 fps</b>"], names: ["Helm chart", "hostPath", "device plugin", "CDI", "Quick Sync"], lesson: "Pods can't touch hardware by default. A device plugin turns a GPU into a resource pods ask for, with no privileged mode." },
+  { n: "08", t: "AdGuard Home", steps: ["Plain manifests: 2 PVCs, Recreate strategy, LoadBalancer on 53 and 3000", "Image <code>v1.0.0</code> wasn't on Docker Hub yet → pinned <code>v0.107.80</code>", "The DNS snake: fixed <code>/etc/resolv.conf</code> so gelkube never depends on its own pod", "Tailnet DNS → <code>100.99.121.82</code>, Override on; <code>accept-dns=false</code> on gelkube", "<code>externalIPs</code> fix so Tailscale clients keep their real IPs", "Whole house: modem DHCP DNS → <code>192.168.0.110</code>", "Health probes and block lists (HaGeZi Pro, Smart-TV, phishing, threat intel, URLHaus)"], names: ["DNS", "externalTrafficPolicy: Local", "externalIPs", "probes", "masquerade"], lesson: "DNS blocking works for every device, but it's whole-domain only. Keep uBlock Origin in browsers for the rest." },
+  { n: "09", t: "Tailscale operator", steps: ["Tags in the policy file: <code>tag:k8s-operator</code>, <code>tag:k8s</code>", "Enabled HTTPS certificates for the tailnet", "OAuth client, stored as Secret <code>operator-oauth</code> by hand (not in Git)", "Operator chart <b>1.104.7</b> via Argo CD", "Argo CD at <code>https://argocd.taild5d1c4.ts.net</code> (server.insecure behind the proxy)", "Jellyfin and AdGuard on HTTPS too"], names: ["Tailscale operator", "IngressClass", "OAuth client", "ts.net HTTPS"], lesson: "An Ingress picks its doorman by class: traefik for plain HTTP at home, tailscale for a private HTTPS device on the tailnet." }
+];
+CHAPTERS.forEach(c => {
+  const card = el("article", { class: "panel chap" });
+  card.innerHTML = `<div class="tag">docs/${c.n}</div><h3>${c.t}</h3><ol>${c.steps.map(s => `<li>${s}</li>`).join("")}</ol><div class="pills">${c.names.map(n => `<span class="pill">${n}</span>`).join("")}</div><div class="lesson">${c.lesson}</div>`;
+  $("#chapterGrid").append(card);
+});
+
+/* ---------- 03 BREAK-IT SIMULATOR ---------- */
+const SW = [
+  ["etcd", "etcd", "the cluster's notebook (server VM)"],
+  ["sched", "kube-scheduler", "picks a node for each new pod"],
+  ["cm", "kube-controller-manager", "the fixer: makes pods match the count"],
+  ["k1", "kubelet on node-1", "runs node-1's pods, checks in"],
+  ["route", "pod route node-0 → node-1", "10.200.1.0/24 via 192.168.122.21"]
+];
+const INSIGHT = {
+  all: "Everything is healthy. Flip a switch to break one part, then try the commands. Predict first!",
+  etcd: "<b>etcd is off.</b> The API server is still running but has nothing to answer with, so kubectl times out. The nodes already know what to run, so nginx keeps serving. In real life the ESP32 showed the nodes as offline: it asks the API server, so 'I can't ask' looked like 'down'.",
+  sched: "<b>The scheduler is off.</b> The controller-manager still creates pods, but nobody picks a node for them, so new pods sit in Pending. When it comes back it waits ~15 s for the old leader-election lease to expire.",
+  cm: "<b>The controller-manager is off.</b> Delete a pod and nothing replaces it. The Deployment's READY number is a report this part writes, so it goes stale and lies.",
+  k1: "<b>node-1's kubelet is off.</b> node-1 turns NotReady after ~40–50 s. Its pods keep running (containerd runs them) but Kubernetes marks them not-ready and the Service stops sending them traffic. After 5 minutes they're replaced on node-0. Try ‘Wait 5 minutes’.",
+  route: "<b>node-0's route to node-1's pods is gone.</b> A request entering at node-0 that the Service sends to a node-1 pod gets lost: some requests work, some don't. Flaky, not down."
+};
+const S = { etcd: true, sched: true, cm: true, k1: true, route: true };
+let desired = 4, pods = [], report = 4, evicted = false;
+const rnd = () => Math.random().toString(36).slice(2, 7);
+function newPod(node = null) { return { name: "nginx-6b66c8866-" + rnd(), node, status: node ? "Running" : "Pending", zombie: false }; }
+function resetSim() { Object.keys(S).forEach(k => S[k] = true); desired = 4; report = 4; evicted = false; pods = [newPod("node-0"), newPod("node-1"), newPod("node-0"), newPod("node-1")]; $("#term").innerHTML = ""; log("note", "# A fresh cluster: 4 nginx pods, 2 on each node. Try ‘kubectl get pods’."); renderSim(); }
+function live() { return pods.filter(p => p.status !== "Terminating"); }
+function reconcile(quiet) {
+  if (!S.etcd) return;
+  if (S.cm) {
+    const cur = live();
+    if (cur.length < desired) { const n = desired - cur.length; for (let i = 0; i < n; i++) pods.push(newPod()); if (!quiet) log("note", `# controller-manager: ${n} pod${n > 1 ? "s" : ""} short → created ${n}`); }
+    else if (cur.length > desired) { let extra = cur.length - desired; const order = [...cur].sort((a, b) => (a.status === "Pending" ? -1 : 1) - (b.status === "Pending" ? -1 : 1)).reverse(); for (const p of order.reverse()) { if (!extra) break; pods = pods.filter(x => x !== p); extra--; } if (!quiet) log("note", "# controller-manager: too many pods → removed the newest"); }
+  }
+  if (S.sched) {
+    pods.filter(p => p.status === "Pending").forEach(p => {
+      const cand = ["node-0"].concat(S.k1 ? ["node-1"] : []);
+      cand.sort((a, b) => live().filter(x => x.node === a).length - live().filter(x => x.node === b).length);
+      p.node = cand[0]; p.status = "Running";
+      if (!quiet) log("note", `# scheduler: ${p.name} → ${p.node}`);
+    });
+  }
+  if (S.cm) report = live().filter(p => p.status === "Running" && !(p.node === "node-1" && !S.k1)).length;
+}
+function log(cls, text) { const t = $("#term"); const d = el("div", { class: cls }); d.textContent = text; t.append(d); t.scrollTop = t.scrollHeight; }
+const TIMEOUT = "Unable to connect to the server: net/http: request canceled (Client.Timeout exceeded while awaiting headers)";
+const ACTIONS = [
+  ["kubectl get pods", () => {
+    log("cmd", "$ kubectl get pods -o wide");
+    if (!S.etcd) return log("err", TIMEOUT);
+    let out = "NAME                     READY   STATUS        NODE\n";
+    pods.forEach(p => { const ready = p.status === "Running" ? "1/1" : "0/1"; out += `${p.name.padEnd(25)}${ready.padEnd(8)}${p.status.padEnd(14)}${p.node || "<none>"}\n`; });
+    log("", out.trimEnd());
+    if (!S.k1 && pods.some(p => p.node === "node-1")) log("note", "# node-1's READY values are frozen: only its kubelet updates them. The hidden Ready condition is already False.");
+  }],
+  ["kubectl get nodes", () => {
+    log("cmd", "$ kubectl get nodes");
+    if (!S.etcd) return log("err", TIMEOUT);
+    log("", `NAME     STATUS\nnode-0   Ready\nnode-1   ${S.k1 ? "Ready" : "NotReady"}`);
+  }],
+  ["kubectl get deploy", () => {
+    log("cmd", "$ kubectl get deployment nginx");
+    if (!S.etcd) return log("err", TIMEOUT);
+    log("", `NAME    READY   UP-TO-DATE\nnginx   ${report}/${desired}     ${desired}`);
+    const real = live().filter(p => p.status === "Running").length;
+    if (!S.cm && report !== real) log("note", `# Stale! Only ${real} pods are really running. That number is a report the controller-manager writes.`);
+  }],
+  ["scale +2", () => {
+    log("cmd", `$ kubectl scale deployment nginx --replicas=${desired + 2}`);
+    if (!S.etcd) return log("err", TIMEOUT);
+    desired += 2; log("", "deployment.apps/nginx scaled"); reconcile();
+    if (!S.cm) log("note", "# Desired count saved in etcd, but nobody is creating the pods.");
+    else if (!S.sched) log("note", "# Pods created, but they wait in Pending: nobody is choosing a node.");
+  }],
+  ["scale −2", () => {
+    if (desired <= 2) return log("note", "# Let's keep at least 2 pods.");
+    log("cmd", `$ kubectl scale deployment nginx --replicas=${desired - 2}`);
+    if (!S.etcd) return log("err", TIMEOUT);
+    desired -= 2; log("", "deployment.apps/nginx scaled"); reconcile();
+  }],
+  ["delete a pod", () => {
+    if (!S.etcd) { log("cmd", "$ kubectl delete pod …"); return log("err", TIMEOUT); }
+    const p = live().find(x => x.node === "node-0" && x.status === "Running") || live()[0];
+    if (!p) return log("note", "# No pods to delete.");
+    log("cmd", `$ kubectl delete pod ${p.name}`); log("", `pod "${p.name}" deleted`);
+    pods = pods.filter(x => x !== p); reconcile();
+    if (!S.cm) log("note", "# Nothing replaces it: the controller-manager is off.");
+  }],
+  ["curl ×10", () => {
+    log("cmd", "$ for i in $(seq 10); do curl -s -o /dev/null -w '%{http_code} ' http://node-0:32291; done");
+    const eps = pods.filter(p => p.status === "Running" && !(p.node === "node-1" && !S.k1));
+    if (!eps.length) return log("err", "000 000 000 000 000 000 000 000 000 000   # no ready pods");
+    let out = [], fails = 0;
+    for (let i = 0; i < 10; i++) { const e = eps[Math.floor(Math.random() * eps.length)]; const ok = !(e.node === "node-1" && !S.route); if (!ok) fails++; out.push(ok ? "200" : "000"); }
+    log(fails ? "err" : "ok", out.join(" "));
+    if (!S.etcd) log("note", "# Still serving with etcd off: nothing needs etcd to keep running.");
+    if (fails) log("note", `# ${fails}/10 lost: requests sent to node-1's pods had no route from node-0.`);
+  }],
+  ["wait 5 minutes", () => {
+    log("cmd", "$ sleep 300; kubectl get pods");
+    if (!S.k1 && S.etcd && S.cm && !evicted) {
+      evicted = true;
+      pods.filter(p => p.node === "node-1" && p.status === "Running").forEach(p => { p.status = "Terminating"; p.zombie = true; });
+      log("note", "# 300 s toleration used up: node-1's pods marked Terminating (they're still running over there!)");
+      reconcile();
+    } else if (!S.k1 && (!S.etcd || !S.cm)) log("note", "# Nothing changes: replacing pods needs etcd and the controller-manager.");
+    else log("note", "# Five quiet minutes. Nothing to do.");
+  }]
+];
+function toggle(k) {
+  S[k] = !S[k];
+  const name = SW.find(s => s[0] === k)[1];
+  if (k === "route") log("cmd", S[k] ? "$ ssh root@node-0 ip route add 10.200.1.0/24 via 192.168.122.21" : "$ ssh root@node-0 ip route del 10.200.1.0/24");
+  else { const unit = { etcd: "etcd", sched: "kube-scheduler", cm: "kube-controller-manager", k1: "kubelet" }[k]; const host = k === "k1" ? "node-1" : "server"; log("cmd", `$ ssh root@${host} systemctl ${S[k] ? "start" : "stop"} ${unit}`); }
+  if (k === "k1" && S.k1) {
+    const term = pods.filter(p => p.status === "Terminating"); if (term.length) { pods = pods.filter(p => p.status !== "Terminating"); log("note", `# node-1's kubelet is back: it stopped ${term.length} deleted pod${term.length > 1 ? "s" : ""}. node-1 is Ready… and empty. No rebalancing.`); }
+    evicted = false;
+  }
+  if (k === "k1" && !S.k1) log("note", "# ~40–50 s later: node-1 NotReady.");
+  if (S[k] && (k === "sched" || k === "cm")) log("note", "# (waits ~15 s for the old leader-election lease, then gets to work)");
+  reconcile(); renderSim();
+}
+function renderSim() {
+  const sw = $("#switches"); sw.innerHTML = "";
+  SW.forEach(([k, name, sub]) => { const row = el("div", { class: "sw" }); row.innerHTML = `<div class="lbl">${name}<small>${sub}</small></div>`; const b = el("button", { class: "toggle", role: "switch", "aria-checked": String(S[k]), "aria-label": name }); b.onclick = () => toggle(k); row.append(b); sw.append(row); });
+  const rb = el("button", { class: "btn" }, "↺ Fix everything"); rb.onclick = resetSim; sw.append(rb);
+  const nv = $("#nodesVis"); nv.innerHTML = "";
+  ["node-0", "node-1"].forEach(n => {
+    const ok = n === "node-0" || S.k1;
+    const col = el("div", { class: "nodecol" });
+    col.innerHTML = `<h4>${n} <span class="${ok ? "ready" : "notready"}">${ok ? "Ready" : "NotReady"}</span></h4><div class="muted mono" style="font-size:11.5px">pods 10.200.${n === "node-0" ? 0 : 1}.0/24</div>`;
+    const grid = el("div", { class: "podgrid" });
+    pods.filter(p => p.node === n).forEach(p => grid.append(el("span", { class: "pod " + p.status + (p.zombie || (n === "node-1" && !S.k1) ? " zombie" : ""), title: p.status }, p.name.slice(-5) + (p.status === "Terminating" ? " ⌛" : ""))));
+    col.append(grid); nv.append(col);
+  });
+  const pend = pods.filter(p => p.status === "Pending");
+  const pb = el("div", { class: "pendingbox" }, `Pending (no node): ${pend.length ? "" : "none"}`);
+  pend.forEach(p => pb.append(el("span", { class: "pod", style: "margin-left:6px" }, p.name.slice(-5))));
+  nv.append(pb);
+  const off = SW.map(s => s[0]).filter(k => !S[k]);
+  $("#insight").innerHTML = off.length ? off.map(k => INSIGHT[k]).join("<br><br>") : INSIGHT.all;
+}
+ACTIONS.forEach(([label, fn]) => { const b = el("button", { class: "btn mono", style: "font-size:13.5px" }, label); b.onclick = () => { fn(); renderSim(); }; $("#simActions").append(b); });
+resetSim();
+
+/* ---------- 04 GITOPS ---------- */
+(function gitops() {
+  let git = { n: 2, msg: "hello from git" }, k = { n: 2, msg: "hello from git" }, busy = false;
+  const msgs = ["the cube", "the cube absorbs all", "bubbles inside", "zombies welcome", "hello from git"];
+  const dot = $("#gdot");
+  const show = () => { $("#gGitVal").textContent = `${git.n} pods · "${git.msg}"`; $("#gKVal").textContent = `${k.n} pods · "${k.msg}"`; $("#kTxt").textContent = `${k.n} pods · "${k.msg}"`; const synced = git.n === k.n && git.msg === k.msg; $("#argoTxt").textContent = synced ? "Synced" : "OutOfSync"; };
+  const status = (synced, text) => { $("#gLog").innerHTML = `Status: <span class="badge ${synced ? "synced" : "outofsync"}">${synced ? "Synced" : "OutOfSync"}</span> ${text}`; };
+  function ride(pathId, ms) { return new Promise(res => { const p = document.getElementById(pathId); const L = p.getTotalLength(); dot.setAttribute("opacity", 1); if (reduceMotion) { const e = p.getPointAtLength(L); dot.setAttribute("cx", e.x); dot.setAttribute("cy", e.y); return setTimeout(res, 200); } const t0 = performance.now(); const f = now => { const q = Math.min(1, (now - t0) / ms); const pt = p.getPointAtLength(q * L); dot.setAttribute("cx", pt.x); dot.setAttribute("cy", pt.y); q < 1 ? requestAnimationFrame(f) : res(); }; requestAnimationFrame(f); }); }
+  let pollTimer = null, fastPoll = null;
+  async function sync(reason) {
+    status(false, reason); await ride("lp1", 900); await ride("lp2", 900);
+    status(false, "Applied through the API server. The kubelet updates the ConfigMap file in the pods…"); k.n = git.n; show(); await wait(1000);
+    k.msg = git.msg; show(); dot.setAttribute("opacity", 0); status(true, "Git and the cluster match again.");
+  }
+  $("#gPush").onclick = async () => {
+    if (busy) return; busy = true;
+    git.msg = msgs[(msgs.indexOf(git.msg) + 1) % msgs.length]; show();
+    status(false, "You committed on GitHub. Argo CD hasn't looked yet: it checks every 3 minutes…");
+    let left = 3; const tick = () => { if (fastPoll === "now") return; $("#gLog").innerHTML = `Status: <span class="badge outofsync">waiting</span> Next Git check in ${left} min… (or click Refresh)`; };
+    tick();
+    await new Promise(res => { pollTimer = setInterval(() => { left--; if (left <= 0 || fastPoll === "now") { clearInterval(pollTimer); res(); } else tick(); }, 1000); });
+    fastPoll = null;
+    await sync("Argo CD checked Git: the message changed → OutOfSync. Syncing…");
+    busy = false;
+  };
+  $("#gRefresh").onclick = () => { if (pollTimer) fastPoll = "now"; else status(git.n === k.n && git.msg === k.msg, "Refreshed: Argo CD checked Git right now. Nothing new."); };
+  $("#gScale").onclick = async () => {
+    if (busy) return; busy = true;
+    k.n = 5; show(); status(false, "You scaled to 5 by hand. Argo CD watches the cluster live, so it notices right away…");
+    await wait(1200); await ride("lp3", 700);
+    status(false, "selfHeal: putting it back to what Git says (replicas: 2). The newest pods go first."); await wait(900);
+    k.n = git.n; show(); dot.setAttribute("opacity", 0); status(true, "Undone. Git won."); busy = false;
+  };
+  show();
+})();
+
+/* ---------- 05 BESTIARY ---------- */
+const BEASTS = [
+  { name: "The Ouroboros Serpent", type: "Medium DNS snake, eats its own tail", where: "docs/08 · AdGuard Home", sign: "Failed to pull image \"adguard/adguardhome:v0.107.80\": ... lookup registry-1.docker.io: Try again", weak: "ServiceLB's hostPort on port 53 caught gelkube's own lookups to the local helper at 127.0.0.53, sending them to AdGuard Home, which couldn't start without an image. <b>Fix:</b> point <code>/etc/resolv.conf</code> at <code>/run/systemd/resolve/resolv.conf</code> (the real upstream servers), and <code>tailscale set --accept-dns=false</code>. A server's own DNS must never depend on a pod it runs." },
+  { name: "The Masquerading Doorman", type: "Small svclb pod, stamps its own name on every letter", where: "docs/08 · AdGuard Home", sign: "Top clients: 10.42.0.31   (every Tailscale device)", weak: "kube-proxy had a rule for the LoadBalancer IP (192.168.0.110) but not for the Tailscale address, so Tailscale traffic fell through to the svclb pod's hostPort, which masquerades. <b>Fix:</b> <code>externalIPs: [100.99.121.82]</code> on the Service, so kube-proxy takes the direct path and keeps the client IP." },
+  { name: "The Framebuffer Ghost", type: "Tiny undead symlink, haunts /dev/dri/by-path", where: "docs/07 · Jellyfin GPU", sign: "failed to mkdir \"/dev/dri/by-path/pci-0000:00:02.0-platform-simple-framebuffer.0-card\": file exists\n... open ...simple-framebuffer.0-card: no such file or directory", weak: "At boot, the stand-in driver simpledrm makes <code>card0</code>; when i915 takes over, card0 vanishes but its by-path shortcut stays, pointing at nothing. <b>Fix:</b> plugin arg <code>-bypath=none</code> (kustomize patch), delete broken symlinks with <code>find -xtype l -delete</code>, a boot service that does it before k3s starts, and a fresh CDI file." },
+  { name: "The Stale Scroll", type: "Paper construct, remembers wrong things", where: "docs/07 · Jellyfin GPU", sign: "/var/run/cdi/intel.cdi.k8s.io-gpu-card1.yaml\n21:  - hostPath: /dev/dri/by-path/...simple-framebuffer.0-card", weak: "The device plugin's <b>CDI</b> note (how containerd should hand the GPU to a pod) still listed the ghost symlink, even after a plugin restart. <b>Fix:</b> delete the file and restart the plugin so it writes a fresh one." },
+  { name: "The CrashLoop Changeling", type: "Shapeshifter, says Running while it crashes", where: "docs/07 · Jellyfin GPU", sign: "kubectl delete pod --field-selector=status.phase!=Running\nNo resources found", weak: "A pod in <b>CrashLoopBackOff</b> still has phase <code>Running</code>: Kubernetes keeps restarting its container. The STATUS column and the phase are different things. <b>Fix:</b> delete it by name." },
+  { name: "The Phantom Image", type: "Illusion, exists on GitHub only", where: "docs/08 · AdGuard Home", sign: "pod/adguard-home-58597458b6-58jc5   0/1   ErrImagePull", weak: "AdGuard Home <b>v1.0.0</b> was tagged on GitHub, but its container image wasn't on Docker Hub yet. <b>Fix:</b> pin the newest image that exists, <code>v0.107.80</code>, and bump it in Git later." },
+  { name: "The Kubeconfig Doppelgänger", type: "Mimic, wears another cluster's face", where: "docs/06 · k3s", sign: "[INFO] Skipping /usr/local/bin/kubectl symlink to k3s, already exists", weak: "Copying k3s's kubeconfig to <code>~/.kube/config</code> replaced the one the ESP32 status exporter used, and an old v1.32 kubectl was in the way. <b>Fix:</b> save the hand-built cluster's as <code>~/.kube/kthw.config</code>, set <code>KUBECONFIG</code> in the exporter's service, and link kubectl to k3s." },
+  { name: "The Address Squatter", type: "Small mimic, sits in the seat you wanted", where: "docs/04 · housekeeping", sign: "This IP address is already used. Please select another IP address.", weak: "<code>192.168.0.102</code> was gelkube's live lease, and this modem picks manual reservations from <code>.102–.254</code>. <b>Fix:</b> reserve <code>.110</code>, reboot gelkube, update the ESP32." },
+  { name: "The Wrong Lever", type: "Trap, looks like the right button", where: "docs/08 · AdGuard Home", sign: "kubectl -n argocd annotate application root argocd.argoproj.io/refresh=normal\n(nothing changes)", weak: "<code>root</code> only watches the <i>list</i> of apps in <code>k8s/argocd/apps/</code>. The change was inside the app's own folder. <b>Fix:</b> refresh the app whose folder changed." },
+  { name: "The Impostor Phone", type: "Doppelgänger, actually a laptop", where: "docs/08 · AdGuard Home", sign: "Tailscale admin: 2 machines (gelkube, win-os1cv6lnqme)", weak: "The 'phone on cellular' queries were really the <b>laptop</b>: the phone wasn't on Tailscale yet, and Override DNS sends the laptop through AdGuard too. <b>Fix:</b> install Tailscale on the phone; it showed up as 100.86.3.115." },
+  { name: "The Glob Gremlin", type: "Tiny trickster, expands too early", where: "docs/07 · Jellyfin GPU", sign: "grep: /var/run/cdi/*: No such file or directory", weak: "Your own shell expands <code>*</code> <i>before</i> sudo runs, and your user can't read that folder, so the pattern stays literal. <b>Fix:</b> <code>sudo sh -c '…'</code> runs the whole command, star included, as root." }
+];
+BEASTS.forEach(b => {
+  const c = el("article", { class: "panel beast" });
+  c.innerHTML = `<h3>${b.name}</h3><div class="type">${b.type}</div><div class="row"><b>Habitat</b> ${b.where}</div><div class="row"><b>Signs</b></div><div class="sign"></div><div class="row weak"><b>Weakness</b> ${b.weak}</div>`;
+  c.querySelector(".sign").textContent = b.sign;
+  const w = c.querySelector(".weak"); w.tabIndex = 0; w.onclick = () => w.classList.add("shown"); w.onkeydown = e => { if (e.key === "Enter") w.classList.add("shown"); };
+  $("#bestiaryGrid").append(c);
+});
+$("#hideBtn").onclick = e => { const on = document.body.classList.toggle("hide-answers"); e.target.textContent = "Quiz mode: " + (on ? "on" : "off"); e.target.setAttribute("aria-pressed", on); document.querySelectorAll(".beast .weak").forEach(w => w.classList.remove("shown")); };
+
+/* ---------- 06 NAMES ---------- */
+const TERMS = [
+  ["Kubernetes", "etcd", "The cluster's notebook: a key-value database holding every object. Down = cluster frozen, not crashed.", "Exercise 1: kubectl timed out, nginx kept serving."],
+  ["Kubernetes", "kube-apiserver", "The front door, and the only part that talks to etcd. kubectl, the scheduler and kubelets all go through it.", ""],
+  ["Kubernetes", "kube-scheduler", "Picks a node for each new pod, once. Never moves running pods.", "Off = new pods stay Pending."],
+  ["Kubernetes", "kube-controller-manager", "The fixer: compares desired with actual and creates or removes pods. Also writes status reports.", "Off = deleted pods aren't replaced, READY goes stale."],
+  ["Kubernetes", "kubelet", "The worker on each node: starts pods through containerd and checks in with the API server.", "Quiet for ~40–50 s = node NotReady."],
+  ["Kubernetes", "kube-proxy", "Writes the rules that send traffic for a Service's IPs to its pods.", "Only knows the IPs it's told about: hence externalIPs."],
+  ["Kubernetes", "Leader election", "Control plane parts take a lease (a lock) before acting, so only one copy works at a time.", "A restarted scheduler waited ~15 s for the old lease."],
+  ["Kubernetes", "Toleration (300 s)", "How long a pod stays on a NotReady node before Kubernetes replaces it elsewhere.", "Avoids duplicates after a short blip."],
+  ["Kubernetes", "Pod phase vs STATUS", "Phase is Pending/Running/Succeeded/Failed. STATUS can say CrashLoopBackOff while the phase is still Running.", "The CrashLoop Changeling."],
+  ["Kubernetes", "ReplicaSet hash", "The middle of a pod's name (6b66c8866). A changed pod template = a new ReplicaSet.", "rollout restart made a new one."],
+  ["Kubernetes", "cordon / drain", "cordon: no new pods on a node. drain: also move the existing ones off.", "Used to make the spread rule fight back."],
+  ["Kubernetes", "topologySpreadConstraints", "Rules for spreading pods, e.g. maxSkew: 1 across nodes. DoNotSchedule = wait rather than break it.", ""],
+  ["Kubernetes", "Probes", "startup: give it time to boot. readiness: only send traffic when it answers. liveness: restart it if it stops.", "AdGuard: nslookup doubleclick.net 127.0.0.1."],
+  ["Kubernetes", "PVC", "PersistentVolumeClaim: 'I need N GB that survives restarts'. k3s's local-path answers with a folder on disk.", "Jellyfin config 5Gi."],
+  ["Kubernetes", "hostPath", "A window from a pod into a real folder on the node.", "/srv/media → /media in Jellyfin."],
+  ["Kubernetes", "Service: LoadBalancer", "Gives a Service an outside address. On k3s, ServiceLB opens the port on the node itself.", "Jellyfin :8096, AdGuard :53 and :3000."],
+  ["Kubernetes", "externalTrafficPolicy: Local", "Only send outside traffic to pods on the node it arrived at, and keep the client's real IP.", ""],
+  ["Kubernetes", "externalIPs", "Extra addresses kube-proxy should treat as the Service's.", "100.99.121.82 → Tailscale clients keep their IPs."],
+  ["Kubernetes", "Ingress / IngressClass", "HTTP routing rules; the class picks the doorman that handles them.", "traefik (home HTTP) vs tailscale (private HTTPS)."],
+  ["Kubernetes", "Device plugin", "Advertises hardware as a resource pods can ask for, and hands over just that device.", "gpu.intel.com/i915: 1 for Jellyfin."],
+  ["Kubernetes", "CDI", "Container Device Interface: a note in /var/run/cdi telling containerd which device files to give a container.", "The Stale Scroll."],
+  ["Kubernetes", "ConfigMap", "Settings or files stored in Kubernetes and mounted into pods. Updated in place within ~1 min.", "hello-gelkube's HTML."],
+  ["k3s", "k3s", "A small, certified Kubernetes: one binary, one service, one command to install.", "v1.37.2, Ready in 22 s."],
+  ["k3s", "SQLite (kine)", "A single k3s server stores its state in SQLite instead of etcd.", ""],
+  ["k3s", "ServiceLB / svclb", "k3s's tiny load balancer: svclb pods open hostPorts for LoadBalancer Services.", "The Masquerading Doorman."],
+  ["k3s", "Traefik", "k3s's built-in front door on ports 80/443 for Ingresses of class traefik.", "http://gelkube → hello-gelkube."],
+  ["k3s", "local-path-provisioner", "k3s's storage clerk: makes PVC folders under /var/lib/rancher/k3s/storage.", ""],
+  ["k3s", "CoreDNS / metrics-server", "The cluster's phone book, and the thermometer behind kubectl top.", ""],
+  ["GitOps", "GitOps", "Git is the source of truth; a controller keeps the cluster matching the repo.", "Change the repo, not the cluster."],
+  ["GitOps", "Argo CD", "The GitOps controller: repo-server reads Git, application-controller compares and applies, server is the UI.", ""],
+  ["GitOps", "Application", "An Argo CD object: 'keep this path of this repo synced to this namespace'.", ""],
+  ["GitOps", "App of apps", "One Application (root) whose folder holds the other Applications.", "root watches k8s/argocd/apps/."],
+  ["GitOps", "prune / selfHeal", "prune: delete what was removed from Git. selfHeal: undo changes made by hand.", "Scaled to 5, back to 2 in seconds."],
+  ["GitOps", "Refresh", "Make Argo CD check Git now instead of waiting up to 3 minutes. CLI: the argocd.argoproj.io/refresh annotation.", ""],
+  ["GitOps", "Helm chart + values", "A packaged app with placeholders; values.yaml holds only my changes.", "Jellyfin 3.7.0, operator 1.104.7."],
+  ["GitOps", "Kustomize patch", "A small change layered on someone else's manifests without copying them.", "-bypath=none on Intel's plugin."],
+  ["Network", "DHCP reservation", "A modem rule: this MAC address always gets this IP.", "gelkube → 192.168.0.110."],
+  ["Network", "DNS", "The internet's phone book, on port 53. Blocking = answering 0.0.0.0.", ""],
+  ["Network", "Upstream DNS", "The real resolver AdGuard asks for anything not blocked.", ""],
+  ["Network", "resolv.conf stub", "Ubuntu points programs at 127.0.0.53 (systemd-resolved). The real servers are in /run/systemd/resolve/resolv.conf.", "The Ouroboros Serpent."],
+  ["Network", "SNAT / masquerade", "Replacing a packet's source address with your own on the way through.", "Why clients showed as 10.42.0.31."],
+  ["Network", "Pod route", "A route like 10.200.1.0/24 via 192.168.122.21 so nodes can reach each other's pods.", "Deleted = 4 of 10 requests lost."],
+  ["Tailscale", "Tailnet", "My private network of devices: taild5d1c4.ts.net.", ""],
+  ["Tailscale", "Override DNS servers", "Tailscale devices use the tailnet's DNS (AdGuard) instead of the local network's.", ""],
+  ["Tailscale", "accept-dns=false", "Tells one device to ignore the tailnet's DNS settings.", "Set on gelkube so its DNS stays independent."],
+  ["Tailscale", "Tags", "Name badges for non-human devices: tag:k8s-operator, tag:k8s.", ""],
+  ["Tailscale", "Tailscale operator", "A controller that puts Services and Ingresses on the tailnet as their own devices.", "Login in Secret operator-oauth, not in Git."],
+  ["Tailscale", "ts.net HTTPS", "Real Let's Encrypt certificates for <name>.taild5d1c4.ts.net, on private addresses.", "argocd, jellyfin, adguard."],
+  ["Hardware", "Transcoding vs direct play", "Converting video on the fly vs sending the file unchanged.", ""],
+  ["Hardware", "Quick Sync", "Intel's video circuit on the i7-1360P's Iris Xe. Hardware HEVC at ~1433 fps.", ""],
+  ["Hardware", "renderD128", "The device file programs use for GPU video work, in /dev/dri.", ""],
+  ["Hardware", "simpledrm", "The boot-time stand-in display driver (card0) that i915 replaces.", "The Framebuffer Ghost."]
+];
+const CATS = ["All", ...new Set(TERMS.map(t => t[0]))];
+let known = new Set(store.get("known", [])), cat = "All", deck = [], di = 0;
+function buildDeck() { deck = TERMS.filter(t => cat === "All" || t[0] === cat); di = 0; showCard(); }
+function showCard() {
+  const f = $("#fcard"); f.classList.remove("flip");
+  if (!deck.length) return;
+  const [c, term, def, ex] = deck[di];
+  setTimeout(() => { $("#fcCat").textContent = c; $("#fcCat2").textContent = c + " · " + term; $("#fcDef").textContent = def; $("#fcEx").textContent = ex; }, f.classList.contains("flip") ? 250 : 0);
+  $("#fcTerm").textContent = term;
+  $("#fcCount").textContent = `${di + 1} / ${deck.length} · ${[...known].filter(k => deck.some(d => d[1] === k)).length} known`;
+}
+CATS.forEach(cn => { const b = el("button", { class: "btn" + (cn === "All" ? " on" : ""), style: "font-size:13.5px;padding:6px 11px" }, cn); b.onclick = () => { cat = cn; document.querySelectorAll("#fcCats .btn").forEach(x => x.classList.toggle("on", x === b)); buildDeck(); }; $("#fcCats").append(b); });
+$("#fcard").onclick = () => $("#fcard").classList.toggle("flip");
+$("#fcPrev").onclick = () => { di = (di - 1 + deck.length) % deck.length; showCard(); };
+$("#fcAgain").onclick = () => { known.delete(deck[di][1]); store.set("known", [...known]); renderGlossary(); di = (di + 1) % deck.length; showCard(); };
+$("#fcGot").onclick = () => { known.add(deck[di][1]); store.set("known", [...known]); renderGlossary(); di = (di + 1) % deck.length; showCard(); };
+$("#fcShuffle").onclick = () => { for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; } di = 0; showCard(); };
+document.addEventListener("keydown", e => { if (document.activeElement === $("#fcard") && e.key === " ") { e.preventDefault(); $("#fcard").classList.toggle("flip"); } });
+function renderGlossary() {
+  const dl = $("#glossary"); dl.innerHTML = "";
+  TERMS.forEach(([c, t, d, ex]) => { const dt = el("dt", { class: known.has(t) ? "known" : "" }); dt.innerHTML = `<span>${t.replace(/</g, "&lt;")}</span> <span class="pill">${c}</span>`; const dd = el("dd"); dd.textContent = d + (ex ? "  (" + ex + ")" : ""); dl.append(dt, dd); });
+}
+buildDeck(); renderGlossary();
+
+/* ---------- 07 EXPLAIN ---------- */
+const PITCHES = [
+  ["What's in your homelab?", "An old Lenovo Yoga running Ubuntu. On it: four VMs where I built Kubernetes by hand (Kubernetes the Hard Way), and a second cluster, k3s, that runs my real apps: Jellyfin for movies, AdGuard Home for ad blocking, and Argo CD, which deploys everything from my GitHub repo. Tailscale connects it all to my phone and laptop.", "<b>Why two clusters?</b> The hand-built one is for learning how the parts fit; k3s is the practical one. Breaking the hand-built one taught me what each part does."],
+  ["What's GitOps?", "Instead of running commands to change the server, I change files in a Git repo. Argo CD watches the repo and makes the cluster match it. If someone changes the cluster by hand, Argo CD puts it back. So the repo is the source of truth, and I could rebuild the whole thing from it.", "<b>How does it know?</b> It checks Git every 3 minutes, and it watches the cluster live through the Kubernetes API, so drift is fixed in seconds."],
+  ["How does your ad blocking work?", "AdGuard Home is the DNS server for my whole house: the modem tells every device to ask it for addresses. When something asks for an ad or tracker domain, it answers 0.0.0.0, so the ad never loads. My phone uses it everywhere through Tailscale.", "<b>Does it block YouTube ads?</b> No: DNS blocks whole domains, and those ads come from the same domains as the videos. That's what uBlock Origin in the browser is for."],
+  ["How do you reach it from outside without opening ports?", "Tailscale. It's a private network (WireGuard under the hood) between my own devices. The Tailscale Kubernetes operator gives each app its own device name with a real HTTPS certificate, like argocd.<tailnet>.ts.net. Nothing is exposed to the internet.", "<b>Where's the operator's password?</b> In a Kubernetes Secret I created by hand. My repo is public, so secrets never go in Git."],
+  ["What's a device plugin?", "Pods are walled off from hardware. Intel's GPU device plugin advertises the laptop's graphics chip as a resource, gpu.intel.com/i915, and Jellyfin asks for one, like it asks for CPU or memory. Kubernetes hands it just that device, without running it privileged. Then Quick Sync transcodes video at about 60× real time.", "<b>Was it easy?</b> Three bugs: a leftover symlink from the boot-time display driver, a stale CDI file and a pod in CrashLoopBackOff. All fixed and written up."],
+  ["What did breaking the cluster teach you?", "Kubernetes is a team of small parts that each do one job and all talk through the API server. Stop etcd and you can't change anything, but apps keep running. Stop the scheduler and new pods wait. Stop the controller-manager and nothing heals. Stop a kubelet and the node goes NotReady, but its containers keep running.", "<b>Biggest surprise?</b> Status numbers can lie: they're reports written by controllers, so when the writer is down they go stale."]
+];
+PITCHES.forEach(([q, a, f]) => { const c = el("article", { class: "panel pitch" }); c.innerHTML = `<div class="q">“${q}”</div><div class="a">${a.replace(/</g, "&lt;").replace(/&lt;tailnet>/g, "&lt;tailnet&gt;")}</div><div class="follow">${f}</div>`; $("#explainGrid").append(c); });
+
+/* ---------- 08 QUIZ ---------- */
+const QUIZ = [
+  ["Why couldn't the modem reserve 192.168.0.102 for gelkube?", ["The MAC address was typed wrong", "It was gelkube's live lease, and manual reservations come from .102–.254, so you reserved .110", "Reserved addresses must be below .100", "Tailscale was already using .102"], 1, "The modem said 'already used' because gelkube held .102 as a regular lease. You picked .110, then rebooted gelkube so it asked the modem again."],
+  ["You stopped etcd. What happened?", ["All the nginx pods crashed", "kubectl timed out, but nginx kept serving pages", "The nodes went NotReady and drained", "Nothing: etcd only stores logs"], 1, "etcd is the notebook. Without it the API server can't answer, but nodes already know what to run. Down = frozen, not crashed."],
+  ["With the scheduler stopped, you scaled nginx from 4 to 6. The 2 new pods…", ["were never created", "were created but stayed Pending with no node", "started on a random node", "replaced 2 old pods"], 1, "The controller-manager created them; placing them is the scheduler's only job. When it came back, leader election delayed it about 15 s."],
+  ["The controller-manager was off and you deleted a pod. Why did the deployment still say 4/4?", ["The pod wasn't really deleted", "READY is a report the controller-manager writes, so it went stale", "kubectl caches results for 5 minutes", "etcd hadn't saved the delete yet"], 1, "Status fields are only as fresh as the controller writing them."],
+  ["node-1's kubelet stopped. Roughly when were its pods replaced on node-0?", ["Instantly", "After about 40 seconds", "After about 5 minutes", "Never"], 2, "The node went NotReady after ~40–50 s, but each pod tolerates a NotReady node for 300 s before it's replaced, to avoid duplicates after a short blip."],
+  ["node-1 came back Ready. Why did all 4 pods stay on node-0?", ["node-1 was still cordoned", "The scheduler only places a pod once; Kubernetes doesn't rebalance on its own", "The spread rule pinned them", "node-1 lost its pod route"], 1, "Moving a pod means killing and recreating it, so Kubernetes won't do it unasked. rollout restart reshuffled them."],
+  ["Spread rule maxSkew: 1 with DoNotSchedule. node-1 cordoned, scaling from 4 (2/2) to 6. What happens?", ["Both new pods go to node-0", "The 5th goes to node-0 and the 6th stays Pending", "Both stay Pending", "The rule is ignored while a node is cordoned"], 1, "3 vs 2 is allowed; 4 vs 2 breaks maxSkew 1, and node-1 is closed. The Events said: didn't match pod topology spread constraints, unschedulable."],
+  ["You deleted node-0's route to node-1's pods. What did curl ×10 through node-0 show?", ["10 × 000", "10 × 200", "A mix: 6 × 200 and 4 × 000", "A TLS error"], 2, "The Service picks a random pod each time. node-0's pods answered; requests sent to node-1's pods got lost. Route problems look flaky, not down."],
+  ["In k3s, where are the API server, scheduler and controller-manager?", ["Pods in kube-system", "On the jumpbox VM", "Inside the single k3s process, with state in SQLite", "In Argo CD"], 2, "That's why k3s was Ready in 22 seconds. A single k3s server uses SQLite instead of etcd."],
+  ["What does Argo CD's selfHeal do?", ["Restarts crashed pods", "Undoes changes made by hand in the cluster", "Rolls back bad commits in Git", "Heals broken nodes"], 1, "You scaled hello-gelkube to 5 by hand; within seconds it was back to Git's 2. Crashed pods are the controller-manager's job."],
+  ["You edited the page's message on GitHub. Why did it take a few minutes to show?", ["GitHub Pages caching", "Argo CD checks Git every 3 minutes, then the kubelet refreshes ConfigMap files in pods within about a minute", "Traefik caches pages for 5 minutes", "The pods had to be rebuilt"], 1, "Two waits in a row. Refresh skips the first; the pods never restart."],
+  ["In the app of apps, what does root watch?", ["Every file in the repo", "k8s/argocd/apps/, the folder of Applications", "Only k8s/apps/", "The cluster's namespaces"], 1, "So adding an app = adding an Application file there. Changes inside an app's own folder are picked up by that app, which is why refreshing root didn't apply the externalIPs change."],
+  ["How does Jellyfin get the GPU?", ["It runs privileged and sees all of /dev", "It asks for the resource gpu.intel.com/i915: 1, and Intel's device plugin hands it renderD128", "It mounts /dev/dri as a hostPath", "k3s gives every pod the GPU"], 1, "A device plugin turns hardware into a schedulable resource, and the pod stays locked down."],
+  ["What was the 'framebuffer ghost'?", ["A broken HDMI cable", "A leftover by-path symlink to card0 from the boot-time simpledrm driver", "A Jellyfin cache file", "A second GPU"], 1, "card0 disappeared when i915 took over, but its shortcut stayed. Fixed with -bypath=none, deleting broken symlinks, a boot service and a fresh CDI file."],
+  ["Why did --field-selector=status.phase!=Running not find the CrashLoopBackOff pod?", ["Field selectors don't work on pods", "A pod in CrashLoopBackOff still has phase Running", "The pod was in another namespace", "It had already been deleted"], 1, "STATUS and phase are different things. Kubernetes keeps restarting the container, so the pod's phase stays Running."],
+  ["Why couldn't AdGuard Home download its image at first?", ["Docker Hub was down", "ServiceLB's port 53 caught gelkube's own DNS lookups to 127.0.0.53 and sent them to the not-yet-running AdGuard", "The image was too big", "Tailscale blocked Docker Hub"], 1, "The snake eating its tail. gelkube now asks the modem directly, so its own DNS never depends on a pod it runs."],
+  ["Why did every Tailscale device show up as 10.42.0.31?", ["Tailscale hides device IPs", "kube-proxy had no rule for the Tailscale address, so traffic went through the svclb pod, which masquerades", "AdGuard Home groups clients by default", "The phone wasn't on Wi-Fi"], 1, "Adding externalIPs: [100.99.121.82] gave kube-proxy a direct rule that keeps the client IP."],
+  ["Why not set a public DNS server as the modem's Secondary DNS, as a backup?", ["The modem doesn't allow it", "Devices use the secondary at random, not only when the primary fails, so ads would slip through", "It's slower", "It would break Tailscale"], 1, "Real redundancy would be a second AdGuard Home (on the roadmap), so both choices block ads."],
+  ["Where is the Tailscale operator's OAuth secret, and why?", ["In values.yaml, so Argo CD can install it", "In a Secret created by hand (operator-oauth), because the repo is public", "In the Tailscale admin console only", "In AdGuard Home"], 1, "The chart uses operator-oauth when the values are empty. Later, Sealed Secrets will let an encrypted copy live in Git."],
+  ["At https://argocd.taild5d1c4.ts.net, who handles HTTPS?", ["Argo CD, with its self-signed certificate", "The Tailscale proxy, with a real Let's Encrypt certificate, so Argo CD runs with server.insecure", "Traefik", "The modem"], 1, "The proxy terminates TLS and forwards plain HTTP to argocd-server on port 80. That's what 'insecure mode' means here."]
+];
+// Shuffle each question's options once per visit, so the right answer isn't always in the same spot.
+QUIZ.forEach(q => { const right = q[1][q[2]]; const o = [...q[1]]; for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; } q[1] = o; q[2] = o.indexOf(right); });
+let qOrder = QUIZ.map((_, i) => i), qi = 0, answers = {}, showResults = false;
+function renderQuiz() {
+  const main = $("#qMain"); main.innerHTML = "";
+  const done = qOrder.every(i => i in answers);
+  const right = qOrder.filter(i => answers[i] === QUIZ[i][2]).length, answered = qOrder.filter(i => i in answers).length;
+  $("#qScore").textContent = `${right} / ${answered}`;
+  const dots = $("#qDots"); dots.innerHTML = "";
+  QUIZ.forEach((_, i) => { const inRound = qOrder.includes(i); const b = el("button", { class: "qdot" + (i in answers ? (answers[i] === QUIZ[i][2] ? " r" : " w") : "") + (inRound && qOrder[qi] === i && !(done && showResults) ? " cur" : ""), "aria-label": "Question " + (i + 1), title: "Question " + (i + 1) }, String(i + 1)); b.onclick = () => { if (inRound) { qi = qOrder.indexOf(i); renderQuiz(); } }; dots.append(b); });
+  const best = store.get("best", null); $("#qBest").textContent = best !== null ? `Best full score so far: ${best} / 20` : "Your best score is saved in this browser.";
+  if (done && showResults && qOrder.length) {
+    const wrong = qOrder.filter(i => answers[i] !== QUIZ[i][2]);
+    if (qOrder.length === QUIZ.length) { const prev = store.get("best", -1); if (right > prev) store.set("best", right); }
+    const r = el("div", { class: "result" });
+    const msg = right === qOrder.length ? "Perfect. You could teach this." : right >= qOrder.length * .75 ? "Strong. Review the misses and you've got it." : "Good start. Go through the misses, then try again.";
+    r.innerHTML = `<div class="qn">ROUND COMPLETE</div><h3 style="font-size:30px">${right} of ${qOrder.length} right</h3><p class="muted" style="margin:0">${msg}</p>`;
+    if (wrong.length) { const ul = el("ul", { style: "margin:4px 0;padding-left:20px;font-size:15px" }); wrong.forEach(i => ul.append(el("li", {}, `<b>${QUIZ[i][0]}</b><br><span class="muted">${QUIZ[i][1][QUIZ[i][2]]}</span>`))); r.append(ul); const b = el("button", { class: "btn primary" }, `Retry the ${wrong.length} I missed`); b.onclick = () => { wrong.forEach(i => delete answers[i]); qOrder = wrong; qi = 0; showResults = false; renderQuiz(); }; r.append(b); }
+    const all = el("button", { class: "btn" }, "Start a fresh round of 20"); all.onclick = restartQuiz; r.append(all);
+    main.append(r); return;
+  }
+  const i = qOrder[qi], [q, opts, ans, why] = QUIZ[i];
+  const box = el("div", { class: "qbox" });
+  box.innerHTML = `<div class="qn">QUESTION ${i + 1} OF 20${qOrder.length < QUIZ.length ? " · RETRY ROUND" : ""}</div><h3>${q}</h3>`;
+  const os = el("div", { class: "opts" });
+  opts.forEach((o, k) => { const b = el("button", { class: "opt" }); b.textContent = String.fromCharCode(65 + k) + ".  " + o; if (i in answers) { b.disabled = true; if (k === ans) b.classList.add("right"); else if (k === answers[i]) b.classList.add("wrong"); } b.onclick = () => { if (i in answers) return; answers[i] = k; renderQuiz(); }; os.append(b); });
+  box.append(os);
+  if (i in answers) {
+    const ok = answers[i] === ans;
+    box.append(el("div", { class: "explain-box" }, `<b style="color:${ok ? "var(--slime)" : "var(--bad)"}">${ok ? "Right." : "Not quite."}</b> ${why}`));
+    const nav = el("div", { class: "btn-row", style: "margin-top:14px" });
+    const next = el("button", { class: "btn primary" }, qOrder.slice(qi + 1).some(x => !(x in answers)) || qOrder.some(x => !(x in answers)) ? "Next question ›" : "See results ›");
+    next.onclick = () => { const rest = qOrder.map((x, k) => [x, k]).filter(([x]) => !(x in answers)); const after = rest.find(([, k]) => k > qi) || rest[0]; if (after) qi = after[1]; else showResults = true; renderQuiz(); };
+    nav.append(next); box.append(nav);
+  }
+  main.append(box);
+}
+function restartQuiz() { answers = {}; qOrder = QUIZ.map((_, i) => i); qi = 0; showResults = false; renderQuiz(); }
+$("#qRestart").onclick = restartQuiz;
+renderQuiz();
+
+/* ---------- 09 CHEATS ---------- */
+const CHEATS = [
+  ["Is everything OK?", [
+    ["kubectl get pods -A", "Every pod in the k3s cluster"],
+    ["kubectl -n argocd get applications", "All Argo CD apps: Synced / Healthy?"],
+    ["kubectl get ingress -A", "All front doors and their addresses"],
+    ["KUBECONFIG=~/.kube/kthw.config kubectl get nodes", "The hand-built cluster (from gelkube)"],
+    ["curl -s localhost:8787/status | head -c 300", "What the ESP32 sees"]
+  ]],
+  ["Something's stuck", [
+    ["kubectl -n <ns> describe pod <pod> | tail -15", "Events at the bottom say why"],
+    ["kubectl -n <ns> logs deploy/<name> --tail=50", "The app's own log"],
+    ["kubectl -n <ns> delete pod <pod>", "Replace a stuck pod (by name: CrashLoop pods are phase Running)"],
+    ["kubectl -n <ns> exec deploy/<name> -- ls -l /dev/dri", "Look inside a pod"]
+  ]],
+  ["Argo CD", [
+    ["kubectl -n argocd annotate application <app> argocd.argoproj.io/refresh=normal --overwrite", "Check Git now. Refresh the app whose folder changed; root only for new or removed apps"],
+    ["kubectl apply -f k8s/argocd/root.yaml", "The only manifest ever applied by hand"],
+    ["https://argocd.taild5d1c4.ts.net", "The UI, from any Tailscale device"]
+  ]],
+  ["DNS and AdGuard", [
+    ["nslookup doubleclick.net 192.168.0.110", "Should answer 0.0.0.0 (PowerShell or Linux)"],
+    ["ipconfig /all | findstr /c:\"DNS Servers\"", "Which DNS a Windows PC was given"],
+    ["cat /etc/resolv.conf | grep nameserver", "gelkube's own DNS: should be the modem, never itself"],
+    ["sudo tailscale set --accept-dns=false", "Keep a server off the tailnet's DNS"]
+  ]],
+  ["GPU and Jellyfin", [
+    ["kubectl get node gelkube -o jsonpath='{.status.allocatable}' | tr ',' '\\n' | grep gpu", "Should show \"gpu.intel.com/i915\":\"1\""],
+    ["sudo find /dev/dri/by-path -xtype l -print -delete", "Remove broken symlinks (the boot service does this)"],
+    ["sudo sh -c 'ls /var/run/cdi/'", "sh -c so the * expands as root"]
+  ]]
+];
+const ADDR = [
+  ["gelkube, home", "192.168.0.110 (reserved, MAC 08:9d:f4:fe:20:ae)"],
+  ["gelkube, Tailscale", "100.99.121.82"],
+  ["Modem", "192.168.0.1"],
+  ["Laptop (win-os1cv6lnqme)", "100.98.119.17"],
+  ["Phone", "100.86.3.115"],
+  ["tailscale-operator", "100.106.76.74"],
+  ["Argo CD", "https://argocd.taild5d1c4.ts.net"],
+  ["Jellyfin", "https://jellyfin.taild5d1c4.ts.net · http://192.168.0.110:8096 (TV)"],
+  ["AdGuard Home", "https://adguard.taild5d1c4.ts.net · DNS 192.168.0.110:53"],
+  ["hello-gelkube", "http://gelkube (Traefik)"],
+  ["Status exporter", "http://192.168.0.110:8787/status"],
+  ["Hand-built VMs", "jumpbox .10 · server .11 · node-0 .20 · node-1 .21 (192.168.122.x)"],
+  ["k3s networks", "pods 10.42.0.0/16 · Services 10.43.0.0/16"],
+  ["Versions", "k3s v1.37.2 · Jellyfin chart 3.7.0 · Intel plugin v0.37.1 · AdGuard v0.107.80 · operator 1.104.7"]
+];
+CHEATS.forEach(([title, rows]) => {
+  const c = el("article", { class: "panel cheat" }); c.append(el("h3", {}, title));
+  rows.forEach(([cmd, what]) => {
+    const r = el("div", { class: "cmdrow" }); const pre = el("pre"); pre.textContent = cmd;
+    const b = el("button", { class: "btn copy" }, "Copy");
+    b.onclick = async () => { try { await navigator.clipboard.writeText(cmd); b.textContent = "Copied"; } catch (e) { b.textContent = "Select & copy"; const s = window.getSelection(), rg = document.createRange(); rg.selectNodeContents(pre); s.removeAllRanges(); s.addRange(rg); } setTimeout(() => b.textContent = "Copy", 1500); };
+    r.append(pre, b, el("div", { class: "what" }, what.replace(/</g, "&lt;"))); c.append(r);
+  });
+  $("#cheatGrid").append(c);
+});
+const ac = el("article", { class: "panel cheat" }); ac.append(el("h3", {}, "Every address"));
+const t = el("table", { class: "addr" }); ADDR.forEach(([a, b]) => { const tr = el("tr"); tr.append(el("td", {}, a)); const td = el("td"); td.textContent = b; tr.append(td); t.append(tr); });
+ac.append(t); $("#cheatGrid").append(ac);
+
+/* ---------- rail highlight ---------- */
+const chips = [...document.querySelectorAll(".rail a.chip")];
+const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) chips.forEach(c => c.classList.toggle("on", c.getAttribute("href") === "#" + e.target.id)); }), { rootMargin: "-40% 0px -55% 0px" });
+document.querySelectorAll("main section").forEach(s => io.observe(s));
+</script>
+</body>
+</html>

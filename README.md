@@ -143,6 +143,8 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 | 07 | [Jellyfin media server, with hardware transcoding](docs/07-jellyfin.md) | ✅ Done |
 | 08 | [AdGuard Home: ad blocking for the whole network](docs/08-adguard-home.md) | ✅ Done |
 | 09 | [Tailscale operator: private HTTPS addresses for apps](docs/09-tailscale-operator.md) | ✅ Done |
+
+**Study guides:** [Field Guide II](docs/guides/field-guide-2.html) covers 04–09 with an animated map, a break-it simulator, flashcards and a 20-question quiz (download the file and open it in a browser).
 | — | [KubeCon NA 2026 notes](docs/kubecon-2026-notes.md) | 📓 Reference |
 
 ## How I document
