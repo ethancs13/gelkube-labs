@@ -113,3 +113,47 @@ service/adguard-home   LoadBalancer   10.43.62.161   192.168.0.110   53:31420/UD
 gelkube asks the modem (`192.168.0.1`) and Quantum Fiber's DNS (`205.171.2.65`) directly, lookups work, AdGuard Home is **Running**, and DNS is open on **192.168.0.110:53**.
 
 > ⚠️ Side effect to remember: the 4 Kubernetes the Hard Way VMs ask `192.168.122.1:53` (libvirt's DNS) for lookups. That's also a local address on gelkube, so their lookups now go through AdGuard Home too. That's fine while AdGuard Home is up.
+
+---
+
+## Step 3: Setup wizard
+
+**Commands:** none. At **http://gelkube:3000**:
+- Admin web interface: **All interfaces, port 3000** (changed from the suggested 80: port 80 on gelkube belongs to Traefik, and the Service only opens 3000)
+- DNS server: **All interfaces, port 53**
+- Created my admin username and password
+
+**What happened:** the AdGuard Home dashboard, protection **ON**, 0 queries so far.
+
+---
+
+## Step 4: Test it from my desktop
+
+**Why:** prove blocking works before pointing any real device at it.
+
+**Commands** (PowerShell on my desktop):
+```powershell
+nslookup doubleclick.net 192.168.0.110
+nslookup google.com 192.168.0.110
+```
+
+**What it does:** `nslookup <name> <server>` asks one specific DNS server, without changing any settings. `doubleclick.net` is one of Google's biggest ad domains.
+
+**What happened:**
+```
+Server:  gelkube
+Address:  192.168.0.110
+
+Name:    doubleclick.net
+Addresses:  ::
+          0.0.0.0
+
+Name:    google.com
+Addresses:  2607:f8b0:4001:c06::66
+          ...
+          74.125.202.113
+          ...
+```
+- **doubleclick.net → `0.0.0.0` / `::`**: blocked (an address that goes nowhere, for both IPv4 and IPv6)
+- **google.com → real addresses**: normal sites still work
+- `Server: gelkube`: the modem's DNS even knows gelkube's name
