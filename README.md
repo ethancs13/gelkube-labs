@@ -78,8 +78,8 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 ### Main cluster and GitOps
 | Tech | What it does here | Phase | Status |
 |---|---|---|---|
-| [k3s](https://k3s.io/) | Lightweight Kubernetes for the main cluster | 2 | ⏳ |
-| [kubectl](https://kubernetes.io/docs/reference/kubectl/) + [k9s](https://k9scli.io/) | Cluster CLI and terminal UI | 2 | ⏳ |
+| [k3s](https://k3s.io/) | Lightweight Kubernetes for the main cluster | 2 | ✅ |
+| [kubectl](https://kubernetes.io/docs/reference/kubectl/) + [k9s](https://k9scli.io/) | Cluster CLI and terminal UI | 2 | 🚧 |
 | [Helm](https://helm.sh/) | Installs apps on the cluster | 2 | ⏳ |
 | [Argo CD](https://argo-cd.readthedocs.io/) | GitOps: syncs the cluster from this repo | 2 | ⏳ |
 | [Flux](https://fluxcd.io/) | GitOps alternative, to try on a throwaway cluster | stretch | 🧪 |
@@ -137,6 +137,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 | 03 | [Kubernetes the Hard Way](docs/03-kubernetes-the-hard-way.md) | ✅ Cluster built |
 | 04 | [Network housekeeping: a permanent address and no VPN key expiry](docs/04-network-housekeeping.md) | ✅ Done |
 | 05 | [Break-it exercises: stop parts of the cluster on purpose](docs/05-break-it-exercises.md) | ✅ Done |
+| 06 | [k3s and Argo CD: the main cluster](docs/06-k3s-and-argocd.md) | 🚧 In progress |
 | — | [KubeCon NA 2026 notes](docs/kubecon-2026-notes.md) | 📓 Reference |
 
 ## How I document
