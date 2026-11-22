@@ -23,7 +23,7 @@ data:
       <div class="card">
         <h1>🟩 gelkube</h1>
         <p>Deployed by Argo CD, straight from GitHub.</p>
-        <p>Message: <strong>hello from git</strong></p>
+        <p>Message: <strong>the cube</strong></p>
       </div>
     </body>
     </html>
