@@ -105,3 +105,33 @@ persistentvolumeclaim/jellyfin-config   Bound    pvc-701a05a3-fbb2-4e32-a637-2b3
 5. Left **Allow remote connections** on (it's still only reachable on my Wi-Fi and Tailscale)
 
 **What happened:** the Jellyfin home screen, with an empty **Movies** library. I named the server **jelkube**.
+
+---
+
+## Step 5: A first movie (a legal, public domain one)
+
+**Why:** to test the whole path: a file on gelkube's disk → hostPath → Jellyfin → browser.
+
+*Night of the Living Dead* (1968) is in the **public domain**: when the title card was changed, the copyright notice was left off, which under US law at the time put the film straight into the public domain. The Internet Archive hosts it.
+
+**Commands:**
+```bash
+mkdir -p "/srv/media/movies/Night of the Living Dead (1968)"
+wget -O "/srv/media/movies/Night of the Living Dead (1968)/Night of the Living Dead (1968).mp4" \
+  "https://archive.org/download/PhantasmagoriaTheater-NightOfTheLivingDead1968321/PhantasmagoriaTheater-NightOfTheLivingDead1968321_512kb.mp4"
+```
+Then in Jellyfin: ☰ → **Dashboard** → **Libraries** → **Scan All Libraries**.
+
+**What it does:**
+- makes a folder named **`Title (Year)`**, the naming pattern Jellyfin uses to look up the poster, cast and description
+- `wget -O` downloads the film (~400 MB) from the Internet Archive into that folder
+- the scan tells Jellyfin to look for new files
+
+**What happened:** the movie showed up in the Movies library with its poster and details, and it plays. 🧟
+
+**Naming cheat sheet** (Jellyfin finds metadata from folder and file names):
+```
+/srv/media/movies/Movie Name (Year)/Movie Name (Year).mp4
+/srv/media/shows/Show Name (Year)/Season 01/Show Name S01E01.mkv
+/srv/media/music/Artist/Album/01 - Track.flac
+```
