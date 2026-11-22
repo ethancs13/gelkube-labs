@@ -157,3 +157,12 @@ Addresses:  2607:f8b0:4001:c06::66
 - **doubleclick.net → `0.0.0.0` / `::`**: blocked (an address that goes nowhere, for both IPv4 and IPv6)
 - **google.com → real addresses**: normal sites still work
 - `Server: gelkube`: the modem's DNS even knows gelkube's name
+
+Then the dashboard:
+```
+DNS Queries 6 · Blocked by Filters 2 (33%)
+Top clients:          WIN-OS1CV6LNQME (192.168.0.7)  6
+Top blocked domains:  doubleclick.net                2
+```
+- **Client `192.168.0.7`, my desktop's real address**, not a pod address like `10.42.x.x`. That's `externalTrafficPolicy: Local` doing its job. (AdGuard Home even found its Windows name with a reverse lookup.)
+- 6 queries = 2 lookups × (IPv4 + IPv6), plus 2 reverse lookups (`110.0.168.192.in-addr.arpa`) that `nslookup` makes to show the server's name.
