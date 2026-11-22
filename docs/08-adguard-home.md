@@ -1,7 +1,7 @@
 # 08: AdGuard Home (ad blocking for the whole network)
 
 **Date started:** 2026-11-22
-**Status:** 🚧 In progress
+**Status:** ✅ Done
 **Phase:** 3
 
 > **How to read this doc:** every step has the same four parts: **Why**, **Commands**, **What it does** and **What happened**.
@@ -339,3 +339,44 @@ Addresses:  ::
 ```
 - The desktop's only DNS server is **`192.168.0.110`**, and ads are blocked. ✅
 - **No IPv6 sneak-around:** the network adapter has no IPv6 DNS server, and only a local (`fe80::`) IPv6 address.
+
+---
+
+## Step 9: Block lists
+
+**Why:** out of the box AdGuard Home only uses the *AdGuard DNS filter*. More lists catch more.
+
+**Commands:** none. **Filters → DNS blocklists → Add blocklist → Choose from the list.** EasyList and EasyPrivacy aren't offered: they're mostly page-hiding rules for browsers (uBlock Origin's job). For DNS, the well-maintained equivalent is **HaGeZi**.
+
+| List | Why |
+|---|---|
+| AdGuard DNS filter | The default |
+| HaGeZi's Pro Blocklist | Ads, trackers, telemetry; designed to rarely break sites (Normal is milder, Pro++ and Ultimate break more) |
+| Perflyst and Dandelion Sprout's Smart-TV Blocklist | Smart TVs track a lot |
+| Phishing URL Blocklist (PhishTank and OpenPhish) | Phishing sites |
+| HaGeZi's Threat Intelligence Feeds | Malware, scams, hacked sites |
+| Malicious URL Blocklist (URLHaus) | Sites spreading malware |
+
+Skipped for now: Peter Lowe's (covered by HaGeZi Pro), DNS Rebind Protection, and the Encrypted DNS/VPN/TOR/Proxy Bypass list (could block Tailscale features).
+
+**If something breaks:** Query Log → find the blocked (red) entry → **Unblock**. That adds an exception for that domain, the DNS version of "disable uBlock on this site".
+
+## Result
+
+| Where | How | Status |
+|---|---|---|
+| Home Wi-Fi and wired | Modem DHCP hands out `192.168.0.110` as DNS | ✅ |
+| Phone and laptop, anywhere | Tailscale DNS → `100.99.121.82`, real client IPs kept with `externalIPs` | ✅ |
+| AdGuard Home hangs | Liveness probe restarts it after about a minute | ✅ |
+| gelkube is down | No DNS for the house: switch the modem back to Default Servers. Later: a second AdGuard Home | ⚠️ |
+
+## What broke and how I fixed it
+
+| Problem | Cause | Fix |
+|---|---|---|
+| ErrImagePull for `adguard/adguardhome:v1.0.0` | v1.0.0 was tagged on GitHub but its image wasn't on Docker Hub yet | Pinned `v0.107.80` |
+| ImagePullBackOff: `lookup registry-1.docker.io: Try again` | ServiceLB's hostPort on 53 caught gelkube's own lookups to `127.0.0.53`, sending them to the not-yet-running AdGuard Home | `/etc/resolv.conf` → `/run/systemd/resolve/resolv.conf` (real upstream servers); `tailscale set --accept-dns=false` on gelkube |
+| Tailscale devices all showed as `10.42.0.31` | Tailscale traffic missed kube-proxy's rules and went through the svclb pod, which masquerades | `externalIPs: [100.99.121.82]` on the Service |
+| Refreshing `root` didn't apply a change | `root` only watches the list of apps; the change was inside the app's own folder | Refresh the app itself |
+| "Phone" test was really the laptop | The phone wasn't on Tailscale yet | Installed Tailscale on the phone |
+| First `ipconfig` showed the old DNS | Pasted three commands at once and `/renew` ran last | Run them one at a time |

@@ -90,7 +90,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 |---|---|---|---|
 | [Jellyfin](https://jellyfin.org/) | My own media server (movies, shows, music), with Intel Quick Sync for transcoding and watching from anywhere over Tailscale. The first real app deployed with Argo CD | 2 | ✅ |
 | [Tailscale Kubernetes operator](https://tailscale.com/kb/1236/kubernetes-operator) | Gives apps private HTTPS URLs on my tailnet | 3 | ⏳ |
-| [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome) | Network-wide ad blocking, used as my tailnet's DNS | 3 | ⏳ |
+| [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome) | Network-wide ad blocking, used as my tailnet's DNS | 3 | ✅ |
 | [Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets) | Lets encrypted secrets live safely in Git | 3 | ⏳ |
 | [Vaultwarden](https://github.com/dani-garcia/vaultwarden) | Password manager that works with the Bitwarden apps | 3 | ⏳ |
 
@@ -141,7 +141,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 | 05 | [Break-it exercises: stop parts of the cluster on purpose](docs/05-break-it-exercises.md) | ✅ Done |
 | 06 | [k3s and Argo CD: the main cluster](docs/06-k3s-and-argocd.md) | ✅ Done |
 | 07 | [Jellyfin media server, with hardware transcoding](docs/07-jellyfin.md) | ✅ Done |
-| 08 | [AdGuard Home: ad blocking for the whole network](docs/08-adguard-home.md) | 🚧 In progress |
+| 08 | [AdGuard Home: ad blocking for the whole network](docs/08-adguard-home.md) | ✅ Done |
 | — | [KubeCon NA 2026 notes](docs/kubecon-2026-notes.md) | 📓 Reference |
 
 ## How I document
