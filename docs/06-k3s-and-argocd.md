@@ -191,6 +191,113 @@ gelkube   548m         3%       3725Mi          24%
 
 ---
 
+## Step 3: Install Argo CD
+
+### 3.1 Install it
+
+**Why:** Argo CD is the robot that reads this repo and makes the cluster match it. First the robot itself gets installed (this is the one app that can't install itself).
+
+**Commands:**
+```bash
+kubectl create namespace argocd
+kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl -n argocd wait --for=condition=Ready pods --all --timeout=300s
+```
+
+**What it does:**
+- `create namespace argocd`: a separate "room" for Argo CD's parts
+- `kubectl apply ... install.yaml`: installs Argo CD from its official manifest. `--server-side` lets the API server do the merging, needed because some of Argo CD's CRDs are too big for the normal (client-side) way.
+- `wait ... --timeout=300s`: waits until every Argo CD pod is Ready
+
+**What happened:**
+```
+deployment.apps/argocd-server serverside-applied
+statefulset.apps/argocd-application-controller serverside-applied
+...
+pod/argocd-application-controller-0 condition met
+pod/argocd-applicationset-controller-76c9bbbc9f-vqj5g condition met
+pod/argocd-dex-server-c5c68fc58-qzgst condition met
+pod/argocd-notifications-controller-67bf66d585-jpbgx condition met
+pod/argocd-redis-665bf4467d-4gg99 condition met
+pod/argocd-repo-server-7fb4dfb7fb-cf5vt condition met
+pod/argocd-server-7c54fc4fd9-ch9fm condition met
+```
+
+| Part | Job |
+|---|---|
+| server | The website and API I log into |
+| repo-server | Downloads the Git repo and renders it into Kubernetes manifests |
+| application-controller | The robot itself: compares Git with the cluster and fixes differences |
+| redis | Cache |
+| applicationset-controller | Makes many Applications from one template (later) |
+| dex | Single sign-on, like "log in with GitHub" (later) |
+| notifications | Messages when something deploys (later) |
+
+### 3.2 Log in to the web UI over Tailscale
+
+**Commands** (on gelkube):
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo
+kubectl port-forward svc/argocd-server -n argocd --address $(tailscale ip -4) 8080:443
+```
+
+**What it does:**
+- reads the random admin password Argo CD made at install (Secrets are base64-encoded, `base64 -d` decodes it)
+- `port-forward ... --address $(tailscale ip -4)`: connects gelkube's port 8080 to the Argo CD website, listening **only on the Tailscale address**, so only my own devices can reach it. It runs until Ctrl+C.
+
+Then on my desktop: **https://gelkube:8080** → accept the self-signed certificate warning → log in as `admin`.
+
+**What happened:** the Argo CD dashboard, with no applications yet.
+
+> 🔐 To do: change the admin password (User Info → Update password), then delete the `argocd-initial-admin-secret` Secret.
+> 💡 The port-forward is temporary. In Phase 3 the Tailscale operator will give Argo CD a permanent private HTTPS address.
+
+---
+
+## Step 4: The first app, deployed from Git
+
+### 4.1 The files
+
+**Why:** to prove the GitOps loop works end to end with something small before trusting it with real apps.
+
+```
+k8s/
+├── apps/hello-gelkube/          the app itself
+│   ├── configmap.yaml           the HTML page
+│   ├── deployment.yaml          2 nginx pods serving it
+│   ├── service.yaml             a stable address for the pods
+│   └── ingress.yaml             tells Traefik: send http://gelkube/ here
+└── argocd/hello-gelkube.yaml    the Argo CD Application (the instruction for the robot)
+```
+
+The Application says: *keep the cluster matching `k8s/apps/hello-gelkube` on the `main` branch, in namespace `hello`*, with:
+- `automated`: sync by itself when Git changes
+- `prune: true`: delete things that were removed from Git
+- `selfHeal: true`: undo changes made by hand in the cluster
+- `CreateNamespace=true`: create the `hello` namespace if it doesn't exist
+
+### 4.2 Give Argo CD the instruction
+
+**Commands** (on gelkube, in a second SSH window):
+```bash
+cd ~/gelkube-labs && git pull
+kubectl apply -f k8s/argocd/hello-gelkube.yaml
+```
+
+**What it does:** gives Argo CD the Application. This is the **only** file applied by hand; Argo CD fetched and created everything else from GitHub itself.
+
+**What happened:**
+```
+application.argoproj.io/hello-gelkube created
+```
+Within seconds the app was **Synced** and **Healthy** in the Argo CD UI, and **http://gelkube** showed the page:
+
+> 🟩 **gelkube**: Deployed by Argo CD, straight from GitHub. Message: **hello from git**
+
+The request path: my browser → gelkube port 80 → **svclb** → **Traefik** → Ingress rule → Service `hello-gelkube` → one of the 2 nginx pods → the HTML from the ConfigMap.
+
+---
+
 ## What broke and how I fixed it
 
 | Problem | Cause | Fix |
