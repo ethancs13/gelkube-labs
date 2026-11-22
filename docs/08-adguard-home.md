@@ -239,3 +239,19 @@ adguard-home   LoadBalancer   10.43.62.161   192.168.0.110,100.99.121.82   53:31
 Right after, a new client appeared in AdGuard Home with its own Tailscale address, **`100.98.119.17`** (my desktop), instead of more queries piling onto `10.42.0.31`. ✅
 
 > I'd also briefly tried turning off Tailscale's own SNAT (`sudo tailscale set --snat-subnet-routes=false`), which didn't help, and set it back to `true`.
+
+### 5.5 Add my phone to Tailscale, and test for real
+
+**Commands:** none. Installed the **Tailscale** app on my phone, signed in with GitHub (`ethancs13`), allowed the VPN. Then, with Wi-Fi off (cellular only), I browsed for a bit.
+
+**What happened:**
+```
+Top clients
+100.86.3.115              51   ← my phone, on cellular, through Tailscale
+100.98.119.17             41   ← my desktop, through Tailscale
+10.42.0.31                35   ← old entries from before the externalIPs fix (they age out after 24 h)
+WIN-OS1CV6LNQME (192.168.0.7)  6   ← my desktop over home Wi-Fi, from the first nslookup test
+```
+My phone gets ad blocking **away from home**, and shows up under its own address. ✅
+
+**Naming clients:** AdGuard Home → **Settings → Client settings → Add client**, with a name and the `100.x` address as the identifier (Desktop = `100.98.119.17`, Phone = `100.86.3.115`). The dashboard then shows names instead of numbers.
