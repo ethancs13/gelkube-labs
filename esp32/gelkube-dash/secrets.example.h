@@ -6,4 +6,4 @@
 #define WIFI_PASS  "your-wifi-password"
 
 // gelkube's address on your home Wi-Fi (find it with: ip -br a show wlp0s20f3)
-#define STATUS_URL "http://192.168.0.102:8787/status"
+#define STATUS_URL "http://192.168.0.110:8787/status"
