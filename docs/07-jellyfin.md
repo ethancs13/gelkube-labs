@@ -135,3 +135,136 @@ Then in Jellyfin: ☰ → **Dashboard** → **Libraries** → **Scan All Librari
 /srv/media/shows/Show Name (Year)/Season 01/Show Name S01E01.mkv
 /srv/media/music/Artist/Album/01 - Track.flac
 ```
+
+---
+
+## Step 6: Hardware transcoding (Intel Quick Sync)
+
+### What transcoding is
+
+**Transcoding** = converting a video on the fly into something the device can play: a format the TV doesn't support (HEVC, AV1), a smaller version for a slow connection, or subtitles burned into the picture. If the device can play the file as-is, Jellyfin sends it unchanged (**direct play**) and it costs nothing.
+
+- **Software** transcoding: the CPU does the video math. Heavy: one HD stream can keep several cores busy.
+- **Hardware** transcoding: the Intel chip has a small circuit built only for video (**Quick Sync**). Fast, cool, low power, and the CPU stays free for k3s and the VMs.
+
+### 6.1 Check the hardware
+
+**Commands:**
+```bash
+lscpu | grep "Model name"
+ls -l /dev/dri
+lspci | grep -i -E "vga|display"
+```
+
+**What happened:**
+```
+Model name:  13th Gen Intel(R) Core(TM) i7-1360P
+crw-rw---- 1 root video  226,   1 Nov 22 05:12 card1
+crw-rw---- 1 root render 226, 128 Nov 22 05:12 renderD128
+00:02.0 VGA compatible controller: Intel Corporation Raptor Lake-P [Iris Xe Graphics] (rev 04)
+```
+A 13th-gen (Raptor Lake) chip with **Iris Xe** graphics: Quick Sync can decode H.264, HEVC (incl. 10-bit HDR), VP9 and AV1, and encode H.264 and HEVC. `renderD128` is the device file programs use for video work.
+
+### 6.2 Give the GPU to Kubernetes the proper way: a device plugin
+
+**Why:** pods can't see the machine's hardware by default. The easy way is `privileged: true` (the pod can see *everything*). The proper way is a **device plugin**: it advertises the GPU to Kubernetes as a resource that pods ask for, like CPU or memory, and hands over only that device.
+
+**Files:**
+- `k8s/argocd/apps/intel-gpu-plugin.yaml`: Intel's official GPU device plugin, straight from [their repo](https://github.com/intel/intel-device-plugins-for-kubernetes) at the pinned release **v0.37.1** (Argo CD renders it with kustomize)
+- `k8s/apps/jellyfin/values.yaml`: Jellyfin now asks for `gpu.intel.com/i915: 1`
+
+**Commands** (after pushing):
+```bash
+kubectl -n argocd annotate application root argocd.argoproj.io/refresh=normal --overwrite
+kubectl -n intel-gpu-plugin get pods
+kubectl get node gelkube -o jsonpath='{.status.allocatable}' | tr ',' '\n' | grep gpu
+```
+
+**What it does:**
+- the annotation is the command-line version of the **Refresh** button: "check Git now" (the Argo CD UI wasn't reachable because last night's port-forward had closed)
+- checks the plugin pod and what the node now offers
+
+**What happened:**
+```
+intel-gpu-plugin-fqkfh   1/1     Running   0          39s
+"gpu.intel.com/i915":"1"
+```
+The node advertises **1 Intel GPU**. But the new Jellyfin pod failed. This took three rounds to fix (below).
+
+### 6.3 Fix 1: CreateContainerError, "mkdir … file exists"
+
+```
+failed to mkdir "/dev/dri/by-path/pci-0000:00:02.0-platform-simple-framebuffer.0-card": ... file exists
+```
+The plugin also copies the GPU's **by-path symlinks** (shortcuts like `pci-0000:00:02.0-card` → `card1`) into the pod, and gelkube has an odd extra one that clashed. The plugin has a setting for this: `-bypath=none` (don't copy the shortcuts; Jellyfin only needs `renderD128`). I added it as a kustomize **patch** in the Application, on top of Intel's unchanged files:
+
+```yaml
+kustomize:
+  patches:
+    - target: { kind: DaemonSet, name: intel-gpu-plugin }
+      patch: |-
+        - op: add
+          path: /spec/template/spec/containers/0/args
+          value: ["-bypath=none"]
+```
+
+### 6.4 Fix 2: RunContainerError, "no such file or directory"
+
+```
+failed to fulfil mount request: open /dev/dri/by-path/pci-0000:00:02.0-platform-simple-framebuffer.0-card: no such file or directory
+```
+
+**Commands:**
+```bash
+ls -l /dev/dri/by-path/
+sudo sh -c 'grep -n by-path /var/run/cdi/*'
+```
+
+**What happened:**
+```
+pci-0000:00:02.0-card -> ../card1
+pci-0000:00:02.0-platform-simple-framebuffer.0-card -> ../card0
+pci-0000:00:02.0-render -> ../renderD128
+
+intel.cdi.k8s.io-gpu-card1.yaml
+21:            - hostPath: /dev/dri/by-path/pci-0000:00:02.0-platform-simple-framebuffer.0-card
+```
+- There is **no `card0`**. At boot, before the Intel driver loads, Linux draws the screen with a simple stand-in driver (**simpledrm**), which is `card0`. When the real driver (i915) takes over, `card0` disappears, but its by-path shortcut is left behind, **pointing at nothing**.
+- The plugin had written that broken shortcut into its **CDI** file. CDI (Container Device Interface) is a small note in `/var/run/cdi/` that tells containerd which device files to give a container. The stale note survived the plugin restart.
+
+**Fix:**
+```bash
+sudo find /dev/dri/by-path -xtype l -print -delete
+sudo cp host/dri-cleanup/gelkube-dri-cleanup.service /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable gelkube-dri-cleanup
+sudo rm -f /var/run/cdi/intel.cdi.k8s.io-gpu-card1.yaml
+kubectl -n intel-gpu-plugin rollout restart ds/intel-gpu-plugin
+```
+- `find ... -xtype l -delete`: deletes only **broken** symlinks
+- [`gelkube-dri-cleanup.service`](../host/dri-cleanup/gelkube-dri-cleanup.service): does the same at every boot, **before k3s starts**, because the broken shortcut comes back each boot
+- deletes the stale CDI note and restarts the plugin so it writes a fresh one
+
+### 6.5 Fix 3: deleting the stuck pod
+
+`kubectl delete pod -l ... --field-selector=status.phase!=Running` said **No resources found**: a pod in **CrashLoopBackOff** still has phase `Running`, since Kubernetes keeps restarting its container. The STATUS column and the pod's *phase* are different things. Deleting it by name worked.
+
+Also: `sudo grep ... /var/run/cdi/*` failed with "No such file" because *my* shell expands the `*` before sudo runs, and my user can't read that folder. `sudo sh -c '...'` runs the whole command, `*` included, as root.
+
+**Commands:**
+```bash
+kubectl -n jellyfin delete pod jellyfin-6b7945cb5-cv5ml
+kubectl -n jellyfin get pods
+sudo sh -c 'grep -c simple-framebuffer /var/run/cdi/* || echo clean'
+kubectl -n jellyfin exec deploy/jellyfin -- ls -l /dev/dri
+```
+
+**What happened:**
+```
+NAME                        READY   STATUS        RESTARTS      AGE
+jellyfin-69bb8bd99b-zcqrb   1/1     Terminating   2 (10h ago)   11h
+jellyfin-6b7945cb5-c6h49    1/1     Running       0             21s
+clean
+crw-rw---- 1 root root 226,   1 Nov 22 17:40 card1
+crw-rw---- 1 root root 226, 128 Nov 22 17:40 renderD128
+```
+The new Jellyfin pod is **Running with the GPU inside it**, and the old one (no GPU) was retired. Thanks to the rolling update, Jellyfin stayed up through all three failures.
