@@ -9,6 +9,12 @@ spec:
   type: LoadBalancer
   # Local = keep the real client IP, so AdGuard Home can show which device asked for what.
   externalTrafficPolicy: Local
+  # gelkube's Tailscale address. kube-proxy only takes traffic straight to the pod (keeping the
+  # sender's IP) for addresses it knows about: the LoadBalancer address (192.168.0.110) and these.
+  # Without this, Tailscale traffic took ServiceLB's hostPort path instead, which rewrites the
+  # sender to the svclb pod's IP, so every Tailscale device looked like 10.42.0.31. See docs/08.
+  externalIPs:
+    - 100.99.121.82
   selector:
     app: adguard-home
   ports:
