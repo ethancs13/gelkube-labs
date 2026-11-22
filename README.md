@@ -139,6 +139,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 | 05 | [Break-it exercises: stop parts of the cluster on purpose](docs/05-break-it-exercises.md) | ✅ Done |
 | 06 | [k3s and Argo CD: the main cluster](docs/06-k3s-and-argocd.md) | ✅ Done |
 | 07 | [Jellyfin media server, with hardware transcoding](docs/07-jellyfin.md) | ✅ Done |
+| 08 | [AdGuard Home: ad blocking for the whole network](docs/08-adguard-home.md) | 🚧 In progress |
 | — | [KubeCon NA 2026 notes](docs/kubecon-2026-notes.md) | 📓 Reference |
 
 ## How I document

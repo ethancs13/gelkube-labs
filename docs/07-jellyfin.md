@@ -288,6 +288,10 @@ Reason for transcoding: The video's bitrate exceeds the limit
 - **Transcoding** to **HEVC**, because I asked for a lower bitrate than the file has
 - **1433 fps**: the film is about 24 fps, so the chip was converting roughly **60× faster than real time**. Software HEVC encoding on the CPU is nowhere near that fast on an SD film, so this is Quick Sync at work.
 
+## Step 7: Apps
+
+Installed the **Jellyfin** app on my phone and pointed it at `http://192.168.0.110:8096` (home) / `http://gelkube:8096` (Tailscale). It works. TV app: later.
+
 ## Result
 
 Jellyfin runs on k3s, installed from its official Helm chart by Argo CD, with:
