@@ -136,7 +136,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 | 02 | [Installing Ubuntu Server on the laptop](docs/02-installing-ubuntu.md) | ✅ Done |
 | 03 | [Kubernetes the Hard Way](docs/03-kubernetes-the-hard-way.md) | ✅ Cluster built |
 | 04 | [Network housekeeping: a permanent address and no VPN key expiry](docs/04-network-housekeeping.md) | 🚧 In progress |
-| 05 | [Break-it exercises: stop parts of the cluster on purpose](docs/05-break-it-exercises.md) | 🚧 2 of 5 done |
+| 05 | [Break-it exercises: stop parts of the cluster on purpose](docs/05-break-it-exercises.md) | 🚧 3 of 5 done |
 | — | [KubeCon NA 2026 notes](docs/kubecon-2026-notes.md) | 📓 Reference |
 
 ## How I document

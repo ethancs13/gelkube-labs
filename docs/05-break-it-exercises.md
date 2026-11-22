@@ -18,7 +18,7 @@ All commands run on the **jumpbox** (`ssh root@192.168.122.10` from gelkube) unl
 |---|---|---|---|
 | 1 | Stop **etcd** | kubectl stops working, but running apps keep running | ✅ |
 | 2 | Stop **kube-scheduler** | Existing pods fine, new pods stay `Pending` | ✅ |
-| 3 | Stop **kube-controller-manager** | Delete a pod and nobody replaces it | ⏳ |
+| 3 | Stop **kube-controller-manager** | Delete a pod and nobody replaces it | ✅ |
 | 4 | Stop the **kubelet** on node-1 | node-1 goes `NotReady` after ~40–50 s, its pods are only moved minutes later | ⏳ |
 | 5 | Delete a **pod route** on node-0 | Pods on node-0 can't reach pods on node-1 | ⏳ |
 
@@ -182,3 +182,76 @@ nginx-54c98b4f84-wmkr6   1/1     Running   2 (15m ago)   4d9h    10.200.0.7   no
 - A `Pending` pod with no node is the classic sign of a scheduler problem (or of no node having room for it).
 - The control plane parts use **leader election**, so a restarted scheduler can take ~15 s before it starts working.
 - The scheduler didn't need to be told about the waiting pods: it found them itself on startup, because the desired state was already saved in etcd.
+
+---
+
+## Exercise 3: Stop the controller-manager
+
+**Why:** the controller-manager is the cluster's fixer. It keeps comparing the desired state ("4 nginx") with what actually exists, and creates or removes pods until they match. Stopping it shows what happens when nobody is fixing things.
+
+### 3.1 Back to 4 pods, then break it
+
+**Commands:**
+```bash
+kubectl scale deployment nginx --replicas=4
+ssh root@server systemctl stop kube-controller-manager
+```
+
+**What it does:**
+- scales nginx back to 4 (the controller-manager removes 2 pods)
+- then stops the controller-manager on the server VM
+
+### 3.2 Delete a pod
+
+**Commands:**
+```bash
+kubectl delete pod nginx-54c98b4f84-wmkr6
+sleep 10; kubectl get pods
+kubectl get deployment nginx
+```
+
+**What it does:**
+- `kubectl delete pod`: removes one nginx pod, like it crashed and was cleaned up
+- `kubectl get deployment nginx`: shows how many pods the Deployment says are ready
+
+**What happened:**
+```
+pod "nginx-54c98b4f84-wmkr6" deleted
+NAME                     READY   STATUS    RESTARTS      AGE
+nginx-54c98b4f84-48z78   1/1     Running   3 (17m ago)   4d13h
+nginx-54c98b4f84-68srj   1/1     Running   2 (17m ago)   4d9h
+nginx-54c98b4f84-99dgd   1/1     Running   2 (17m ago)   4d9h
+NAME    READY   UP-TO-DATE   AVAILABLE   AGE
+nginx   4/4     4            4           4d13h
+```
+- Only **3 pods**, and nothing replaced the deleted one. The prediction held.
+- **Surprise:** the Deployment still said **`4/4` ready**. That number isn't counted live. It's a *status report* that the controller-manager writes into etcd, and with the controller-manager off nobody updated it. The report was stale and wrong.
+
+### 3.3 Fix it
+
+**Commands:**
+```bash
+ssh root@server systemctl start kube-controller-manager
+sleep 25; kubectl get pods -o wide
+kubectl get deployment nginx
+```
+
+**What it does:** starts the controller-manager again, waits for its leader election, then checks the pods and the Deployment.
+
+**What happened:**
+```
+NAME                     READY   STATUS    RESTARTS      AGE     IP           NODE
+nginx-54c98b4f84-48z78   1/1     Running   3 (18m ago)   4d13h   10.200.1.8   node-1
+nginx-54c98b4f84-68srj   1/1     Running   2 (18m ago)   4d9h    10.200.1.7   node-1
+nginx-54c98b4f84-99dgd   1/1     Running   2 (18m ago)   4d9h    10.200.0.6   node-0
+nginx-54c98b4f84-k6vbm   1/1     Running   0             47s     10.200.0.9   node-0
+NAME    READY   UP-TO-DATE   AVAILABLE   AGE
+nginx   4/4     4            4           4d13h
+```
+A brand-new pod (`k6vbm`) appeared, and the scheduler put it on **node-0**, which had only 1 pod, so the nodes are even again at 2 and 2. The `4/4` is true again.
+
+### What I learned
+
+- The controller-manager is what makes Kubernetes **self-healing**. Without it, a crashed pod just stays gone.
+- **Status fields are reports, not live counts.** They're only as fresh as the controller writing them. (Same lesson as the ESP32 showing "offline" during exercise 1.)
+- A full replacement uses three parts in a row: the **controller-manager** creates the pod, the **scheduler** picks a node, and the **kubelet** on that node starts it.
