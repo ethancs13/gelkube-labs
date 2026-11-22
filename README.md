@@ -135,6 +135,7 @@ Status: ⏳ planned · 🚧 in progress · ✅ running · 🧪 experiment · �
 | 01 | [Planning: goals, name and technology choices](docs/01-planning.md) | ✅ Done |
 | 02 | [Installing Ubuntu Server on the laptop](docs/02-installing-ubuntu.md) | ✅ Done |
 | 03 | [Kubernetes the Hard Way](docs/03-kubernetes-the-hard-way.md) | ✅ Cluster built |
+| 04 | [Network housekeeping: a permanent address and no VPN key expiry](docs/04-network-housekeeping.md) | 🚧 In progress |
 | — | [KubeCon NA 2026 notes](docs/kubecon-2026-notes.md) | 📓 Reference |
 
 ## How I document
