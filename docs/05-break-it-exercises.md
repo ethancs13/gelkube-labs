@@ -90,6 +90,7 @@ HTTP/1.1 200 OK
 The prediction was right:
 - **kubectl stopped working.** The API server process was still running, but with no etcd it had nothing to answer with, so it just waited.
 - **nginx kept serving pages.** The nodes already knew what to run, and kube-proxy's traffic rules were already in place. Nothing needs etcd to *keep* running, only to *change* things.
+- **The ESP32 map showed both nodes as offline**, even though they were fine and still serving nginx. The dashboard learns about nodes *from the API server*, so when the API server couldn't answer, "I can't ask" looked the same as "the nodes are down". Monitoring only knows what it can see.
 
 ### 1.4 Fix it
 
