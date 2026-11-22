@@ -255,3 +255,56 @@ WIN-OS1CV6LNQME (192.168.0.7)  6   ← my laptop over home Wi-Fi, from the first
 My phone gets ad blocking **away from home**, and shows up under its own address. ✅
 
 **Naming clients:** AdGuard Home → **Settings → Client settings → Add client**, with a name and the `100.x` address as the identifier (Laptop = `100.98.119.17`, Phone = `100.86.3.115`). The dashboard then shows names instead of numbers.
+
+---
+
+## Step 6: The whole house, through the modem
+
+**Why:** the modem's DHCP server tells every device which DNS server to use when it joins the network. Pointing that at AdGuard Home covers TVs, consoles and guests, with nothing to install on them.
+
+**Commands:** none. In the modem at `http://192.168.0.1` → **Advanced Setup → LAN Settings → DHCP Settings**:
+- **DHCP DNS Type:** Custom Servers
+- **Primary DNS:** `192.168.0.110`
+- **Secondary DNS:** `192.168.0.110` too. Not a public DNS server: devices use the secondary at random, not only as a backup, so ads would slip through.
+- **Apply**
+
+**What it does:** devices get the new setting the next time they reconnect or renew their lease (turning Wi-Fi off and on speeds it up).
+
+**If gelkube is down for a while:** set **DHCP DNS Type** back to **Default Servers**, or the house loses DNS and "the internet is down".
+
+### Can the modem fail over automatically?
+
+No. It only hands out addresses; it doesn't check whether they work. A script that flips the setting wouldn't help much either, because devices only pick up new DNS settings when they reconnect or renew, which can take hours. So the plan is to make AdGuard Home hard to kill instead:
+1. **Health checks** so Kubernetes restarts it if it hangs (step 7, done)
+2. Later: a **second AdGuard Home** on another machine as the Secondary DNS, kept in sync with adguardhome-sync (both block, so either is safe)
+3. Later: an **ESP32 warning light** when AdGuard Home stops answering
+
+---
+
+## Step 7: Health checks (probes)
+
+**Why:** Kubernetes already restarts a pod whose program **crashes**. Probes also catch a program that's running but **not answering**.
+
+**The change** (in `deployment.yaml`):
+- **startupProbe:** TCP check on port 53 every 2 s, up to 60 s, before the other checks begin
+- **readinessProbe:** every 10 s, `nslookup doubleclick.net 127.0.0.1` inside the pod. A real DNS test, answered from the block list, so it works even if the internet is down. If it fails twice, k3s stops sending traffic to the pod until it answers again.
+- **livenessProbe:** the same test. If it fails 6 times in a row (about **a minute**), k3s restarts the container.
+
+(The image is based on Alpine Linux, so busybox's `nslookup` is inside it.)
+
+**Commands:**
+```bash
+kubectl -n argocd annotate application adguard-home argocd.argoproj.io/refresh=normal --overwrite
+kubectl -n adguard-home get pods
+kubectl -n adguard-home describe pod -l app=adguard-home | grep -E "Startup|Readiness|Liveness"
+```
+
+**What happened:**
+```
+NAME                            READY   STATUS    RESTARTS   AGE
+adguard-home-6d9df74874-dd2k9   1/1     Running   0          29s
+    Liveness:     exec [nslookup doubleclick.net 127.0.0.1] delay=0s timeout=3s period=10s successThreshold=1 failureThreshold=6
+    Readiness:    exec [nslookup doubleclick.net 127.0.0.1] delay=0s timeout=3s period=10s successThreshold=1 failureThreshold=2
+    Startup:      tcp-socket :53 delay=0s timeout=1s period=2s successThreshold=1 failureThreshold=30
+```
+The new pod passed its checks (`1/1` only shows once readiness passes). Because the Deployment uses `strategy: Recreate`, the house had a few seconds without DNS during the swap.
