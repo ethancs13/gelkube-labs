@@ -1,0 +1,21 @@
+# The "app of apps": an Argo CD Application whose job is to create the other Applications.
+# Every file in k8s/argocd/apps/ is one app. To add an app to gelkube, add a file there and push.
+# This is the only file ever applied by hand:  kubectl apply -f k8s/argocd/root.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ethancs13/gelkube-labs.git
+    targetRevision: main
+    path: k8s/argocd/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
