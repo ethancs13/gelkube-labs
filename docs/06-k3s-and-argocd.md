@@ -296,6 +296,16 @@ Within seconds the app was **Synced** and **Healthy** in the Argo CD UI, and **h
 
 The request path: my browser → gelkube port 80 → **svclb** → **Traefik** → Ingress rule → Service `hello-gelkube` → one of the 2 nginx pods → the HTML from the ConfigMap.
 
+### 4.3 Change the website by editing GitHub
+
+**Why:** this is the whole point of GitOps: the repo is the control panel.
+
+**Commands:** none. On GitHub I edited `k8s/apps/hello-gelkube/configmap.yaml` with the pencil button, changed the message from `hello from git` to `the cube`, and committed (commit `23a1e1f`, "Update message in configmap.yaml").
+
+**What happened:** at first nothing changed, then a few minutes later **http://gelkube** showed the new message. No SSH, no kubectl. The wait has two parts:
+1. **Argo CD polls GitHub every 3 minutes** by default. (The **Refresh** button in the UI checks right away. A GitHub webhook would make it instant, but GitHub can't reach Argo CD while it's private on my tailnet.)
+2. **The kubelet refreshes ConfigMap files inside running pods on its own timer**, up to about a minute after the ConfigMap changes. nginx then serves the new file; the pods don't even restart.
+
 ---
 
 ## What broke and how I fixed it
